@@ -1,0 +1,8 @@
+{
+  "module_id": "food_review",
+  "name": "Food Product or Item Review",
+  "content": "For food review content, extract these evaluation details:\n- Product name and brand\n- Category and variant details\n- Price point and value assessment\n- Taste description and rating\n- Texture and appearance notes\n- Comparison to alternatives if mentioned\n- Overall recommendation\n- Special considerations (dietary, availability, etc.)",
+  "category": "subject",
+  "tags": ["review", "product", "evaluation"],
+  "dependencies": ["instruction_base"]
+}

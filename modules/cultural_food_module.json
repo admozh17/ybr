@@ -1,0 +1,8 @@
+{
+  "module_id": "cultural_food",
+  "name": "Cultural and Heritage Food Context",
+  "content": "For content focusing on cultural food traditions, extract:\n- Cultural or ethnic origin of the food\n- Historical or family significance mentioned\n- Traditional preparation methods highlighted\n- Celebration or occasion association\n- Generational knowledge transfer mentioned\n- Regional variations noted\n- Personal stories or memories related",
+  "category": "detail",
+  "tags": ["culture", "heritage", "tradition", "family"],
+  "dependencies": ["instruction_base", "recipe_core"]
+}

@@ -1,0 +1,9 @@
+{
+    "module_id": "compilation_expansion",
+    "name": "Compilation Segment Decomposition",
+    "content": "This video contains multiple distinct segments, each featuring a separate restaurant, food item, or experience. Your task is to:\n\n1. **Detect all individual entries** (e.g., each restaurant, or place to go, or dish in a list or whatever other catagory listed in another module).\n2. **For each entry**, apply all relevant modules (e.g., `restaurant_core`, `dish_details`, `ambiance`, etc.).\n3. Structure your output so that each segment is treated independently, with its own extracted metadata.\n\nReturn the results as a list of extracted objects, one per segment, using the full stack of applicable food modules.",
+    "category": "format",
+    "tags": ["compilation", "multi-item", "ranking", "food"],
+    "dependencies": ["restaurant_core", "dish_details", "ambiance", "ranking_structure"]
+  }
+  

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Short-Form Info Extractor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8 text-center">Short-Form Info Extractor</h1>
+
+        <!-- Welcome message for logged-in users -->
+        {% if current_user.is_authenticated %}
+        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-8 rounded shadow-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="font-bold">Welcome back, {{ current_user.username }}!</h4>
+                    <p class="text-sm">Ready to analyze more videos? Just paste a URL below to get started.</p>
+                </div>
+                <a href="{{ url_for('profile') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    My Profile
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Search component -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-center mb-4">Search Places & Experiences</h3>
+                <div class="flex">
+                    <input type="text" id="search-input" class="flex-grow p-2 border rounded-l" placeholder="Search for restaurants, cafes, activities...">
+                    <a href="/search" id="search-button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Search
+                    </a>
+                </div>
+                <p class="text-gray-500 text-center text-sm mt-2">
+                    Find places by name, type, cuisine, or location
+                </p>
+            </div>
+        </div>
+
+        <!-- URL input form -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <form id="urlForm" class="flex gap-4">
+                <input type="text" id="url" name="url" placeholder="Enter Instagram/TikTok/YouTube URL" 
+                       class="flex-1 p-2 border rounded" required>
+                <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
+                    Analyze
+                </button>
+            </form>
+        </div>
+
+        <!-- Authentication section for non-logged in users -->
+        {% if not current_user.is_authenticated %}
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h3 class="text-xl font-bold text-center mb-4">Account Access</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:border-r md:pr-6">
+                    <h4 class="font-semibold mb-2">Already have an account?</h4>
+                    <p class="text-gray-600 mb-4">Log in to access your saved videos and collections.</p>
+                    <a href="{{ url_for('login') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded inline-flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        Login
+                    </a>
+                </div>
+                <div class="md:pl-6">
+                    <h4 class="font-semibold mb-2">New to Brick by Brick?</h4>
+                    <p class="text-gray-600 mb-4">Create an account to save and organize your analyzed videos.</p>
+                    <a href="{{ url_for('register') }}" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded inline-flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        Register
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Loading and results section -->
+        <div id="loading" class="hidden text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p class="mt-4">Analyzing video...</p>
+        </div>
+
+        <div id="results" class="hidden">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-semibold mb-4">Results</h2>
+                <div id="resultContent" class="space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <div class="flex justify-center mb-8">
+            <a href="/gallery" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
+                View Results Gallery
+            </a>
+        </div>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold">{% if current_user.is_authenticated %}Your Albums{% else %}Albums{% endif %}</h2>
+            <button onclick="showAlbumModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Create Album
+            </button>
+        </div>
+        <div id="albumsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Albums will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Album Creation Modal -->
+    <div id="albumModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full relative">
+            <button onclick="hideAlbumModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <h2 class="text-2xl font-bold mb-4">Create New Album</h2>
+            <input type="text" id="albumName" placeholder="Album Name" class="w-full p-2 border rounded mb-4">
+            <button onclick="createAlbum()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">
+                Create Album
+            </button>
+        </div>
+    </div>
+
+    <script>
+        async function loadAlbums() {
+            const response = await fetch('/albums');
+            const albums = await response.json();
+            const albumsList = document.getElementById('albumsList');
+
+            albumsList.innerHTML = albums.map(album => `
+                <a href="/album/${album.id}" class="block">
+                    <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+                        <h3 class="text-xl font-semibold">${album.name}</h3>
+                        <p class="text-gray-600">${album.activities.length} places</p>
+                        <p class="text-sm text-gray-500">${new Date(album.timestamp).toLocaleDateString()}</p>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        function showAlbumModal() {
+            document.getElementById('albumModal').classList.remove('hidden');
+            document.getElementById('albumModal').classList.add('flex');
+        }
+
+        function hideAlbumModal() {
+            document.getElementById('albumModal').classList.add('hidden');
+            document.getElementById('albumModal').classList.remove('flex');
+        }
+
+        async function createAlbum() {
+            const name = document.getElementById('albumName').value;
+            if (!name) {
+                alert('Please enter an album name');
+                return;
+            }
+
+            const response = await fetch('/album/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name,
+                    activities: []
+                }),
+            });
+
+            if (response.ok) {
+                hideAlbumModal();
+                await loadAlbums();
+                document.getElementById('albumName').value = '';
+            }
+        }
+
+        loadAlbums();
+    </script>
+    <script>
+        document.getElementById('urlForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = document.getElementById('url').value;
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `url=${encodeURIComponent(url)}`
+                });
+
+                const data = await response.json();
+
+                const resultContent = document.getElementById('resultContent');
+                resultContent.innerHTML = '';
+
+                data.activities.forEach((activity, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'border rounded-lg p-4 mb-4';
+                    card.innerHTML = `
+                        <h3 class="text-xl font-semibold">${activity.place_name}</h3>
+                        <p class="text-gray-600">Genre: ${activity.genre}</p>
+                        ${activity.cuisine ? `<p>Cuisine: ${activity.cuisine}</p>` : ''}
+                        ${activity.vibes ? `<p>Vibes: ${activity.vibes}</p>` : ''}
+                        <p>Location: ${[
+                            activity.availability.street_address,
+                            activity.availability.city,
+                            activity.availability.state,
+                            activity.availability.country
+                        ].filter(Boolean).join(', ')}</p>
+                    `;
+                    resultContent.appendChild(card);
+                });
+
+                document.getElementById('results').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error analyzing video');
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        });
+    </script>
+    <!-- Added search functionality script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.getElementById('search-button');
+            
+            // Make the input work with Enter key
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && searchInput.value.trim() !== '') {
+                    window.location.href = '/search?q=' + encodeURIComponent(searchInput.value.trim());
+                }
+            });
+            
+            // Make the button redirect to search page with query
+            searchButton.addEventListener('click', function(e) {
+                if (searchInput.value.trim() !== '') {
+                    e.preventDefault(); // Prevent default link behavior
+                    window.location.href = '/search?q=' + encodeURIComponent(searchInput.value.trim());
+                }
+            });
+        });
+    </script>
+</body>
+</html>

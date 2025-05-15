@@ -1,0 +1,8 @@
+{
+  "module_id": "food_science",
+  "name": "Food Science Explanation",
+  "content": "For food science content, extract these technical details:\n- Scientific principle or concept being explained\n- Chemical or biological processes mentioned\n- Expert credentials if present\n- Common misconceptions addressed\n- Practical applications of the science",
+  "category": "detail",
+  "tags": ["science", "education", "chemistry", "biology"],
+  "dependencies": ["instruction_base", "nutrition_health"]
+}

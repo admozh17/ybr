@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results Gallery - Short-Form Info Extractor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-center">Results Gallery</h1>
+                <a href="/" class="inline-block text-blue-500 hover:text-blue-700">← Back to Analysis</a>
+            </div>
+            <div class="flex gap-4">
+                <select id="locationFilter" class="border rounded p-2">
+                    <option value="">All Locations</option>
+                </select>
+                <select id="activityFilter" class="border rounded p-2">
+                    <option value="">All Activities</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSelectionMode()" id="selectModeBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Select Places
+                </button>
+                <div id="selectionActions" class="hidden flex gap-2">
+                    <button onclick="editSelected()" id="editBtn" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                        Edit Selected
+                    </button>
+                    <button onclick="deleteSelectedPlaces()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                        Delete Selected
+                    </button>
+                    <select id="albumSelect" class="border rounded p-2">
+                        <option value="">Choose existing album</option>
+                    </select>
+                    <button onclick="addToExistingAlbum()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Add to Album
+                    </button>
+                    <button onclick="showNewAlbumModal()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                        Create New Album
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for result in results %}
+                {% for activity in result.data.get('activities', []) %}
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden relative group">
+                        <input type="checkbox" class="absolute top-2 right-2 w-5 h-5 hidden selection-checkbox" 
+                               onchange="toggleSelection(this, '{{ result.id }}', '{{ loop.index0 }}')"
+                               data-result-id="{{ result.id }}" 
+                               data-activity-index="{{ loop.index0 }}">
+                        <div class="cursor-pointer" onclick="window.location.href='/details/{{ result.id }}/{{ loop.index0 }}'">
+                        <img src="{{ activity.get('image_url', 'https://via.placeholder.com/400x300') }}" 
+                             alt="{{ activity.get('place_name', 'Place') }}"
+                             class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="text-xl font-semibold" 
+                                data-location="{{ activity.get('availability', {}).get('city', '') or activity.get('availability', {}).get('region', '') or activity.get('availability', {}).get('country', '') }}">
+                                {{ activity.get('place_name', 'Unknown') }}
+                            </h3>
+                            <p class="text-gray-600" data-genre="{{ activity.get('genre', 'Unknown genre') }}">
+                                {{ activity.get('genre', 'Unknown genre') }}
+                            </p>
+                            {% if activity.get('cuisine') %}
+                                <p>Cuisine: {{ activity.cuisine }}</p>
+                            {% endif %}
+                            {% if activity.get('vibes') %}
+                                <p>Vibes: {{ activity.vibes }}</p>
+                            {% endif %}
+                            <div class="mt-4 flex justify-between items-center">
+                                <p class="text-sm text-gray-500">
+                                    {{ result.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                </p>
+                                <a href="{{ result.url }}"
+                                    target="_blank" rel="noopener noreferrer"
+                                    class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                                    onclick="event.stopPropagation();">
+                                    View Original Reel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Album Creation Modal -->
+    <div id="albumModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full relative">
+            <button onclick="hideAlbumModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <h2 class="text-2xl font-bold mb-4">Create New Album</h2>
+            <input type="text" id="albumName" placeholder="Album Name" class="w-full p-2 border rounded mb-4">
+            <div id="selectedActivities" class="mb-4 max-h-40 overflow-y-auto"></div>
+            <button onclick="createAlbum()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">
+                Create Album
+            </button>
+        </div>
+    </div>
+
+    <!-- JSON Modal -->
+    <div id="jsonModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-2xl max-h-[80vh] overflow-auto relative">
+            <button onclick="hideModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <h2 class="text-2xl font-bold mb-4">Full JSON Data</h2>
+            <pre id="jsonContent" class="bg-gray-100 p-4 rounded overflow-x-auto"></pre>
+        </div>
+    </div>
+
+    <!-- JSON Editor Modal -->
+    <div id="jsonEditorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white rounded-lg p-8 max-w-4xl w-full h-[80vh] relative flex flex-col">
+            <button onclick="hideJsonEditorModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <h2 class="text-2xl font-bold mb-4">Edit Activity Data</h2>
+            <textarea id="jsonEditor" class="w-full flex-grow p-4 font-mono text-sm border rounded mb-4"></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="hideJsonEditorModal()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    Cancel
+                </button>
+                <button onclick="saveJsonChanges()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedActivities = new Set();
+        let allCards = [];
+
+        // Initialize filters on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get all activity cards
+            allCards = Array.from(document.querySelectorAll('.grid > div'));
+            
+            // Extract unique locations and activity types
+            const locations = new Set();
+            const activityTypes = new Set();
+            
+            allCards.forEach(card => {
+                const location = card.querySelector('[data-location]')?.dataset.location;
+                const genre = card.querySelector('[data-genre]')?.dataset.genre;
+                
+                if (location) locations.add(location);
+                if (genre) activityTypes.add(genre);
+            });
+
+            // Populate filter dropdowns
+            const locationFilter = document.getElementById('locationFilter');
+            const activityFilter = document.getElementById('activityFilter');
+
+            locations.forEach(location => {
+                const option = document.createElement('option');
+                option.value = location;
+                option.textContent = location;
+                locationFilter.appendChild(option);
+            });
+
+            activityTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                activityFilter.appendChild(option);
+            });
+
+            // Add filter event listeners
+            locationFilter.addEventListener('change', applyFilters);
+            activityFilter.addEventListener('change', applyFilters);
+        });
+
+        function applyFilters() {
+            const selectedLocation = document.getElementById('locationFilter').value;
+            const selectedActivity = document.getElementById('activityFilter').value;
+
+            allCards.forEach(card => {
+                const location = card.querySelector('[data-location]')?.dataset.location;
+                const genre = card.querySelector('[data-genre]')?.dataset.genre;
+                
+                const locationMatch = !selectedLocation || location === selectedLocation;
+                const activityMatch = !selectedActivity || genre === selectedActivity;
+
+                if (locationMatch && activityMatch) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        let albums = [];
+        let selectionMode = false;
+
+        function toggleSelectionMode() {
+            selectionMode = !selectionMode;
+            const checkboxes = document.querySelectorAll('.selection-checkbox');
+            const selectionActions = document.getElementById('selectionActions');
+            const selectModeBtn = document.getElementById('selectModeBtn');
+
+            checkboxes.forEach(cb => {
+                cb.classList.toggle('hidden');
+            });
+
+            if (selectionMode) {
+                selectionActions.classList.remove('hidden');
+                selectModeBtn.textContent = 'Cancel Selection';
+                selectModeBtn.classList.replace('bg-blue-500', 'bg-red-500');
+            } else {
+                selectionActions.classList.add('hidden');
+                selectModeBtn.textContent = 'Select Places';
+                selectModeBtn.classList.replace('bg-red-500', 'bg-blue-500');
+                selectedActivities.clear();
+                checkboxes.forEach(cb => cb.checked = false);
+            }
+        }
+
+        function toggleSelection(checkbox, resultId, activityIndex) {
+            const key = `${resultId}-${activityIndex}`;
+            if (checkbox.checked) {
+                selectedActivities.add(key);
+            } else {
+                selectedActivities.delete(key);
+            }
+        }
+
+        async function addToExistingAlbum() {
+            const albumId = document.getElementById('albumSelect').value;
+            if (!albumId) {
+                alert('Please select an album');
+                return;
+            }
+
+            if (selectedActivities.size === 0) {
+                alert('Please select at least one place');
+                return;
+            }
+
+            const response = await fetch(`/album/${albumId}/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    activities: Array.from(selectedActivities)
+                }),
+            });
+
+            if (response.ok) {
+                alert('Places added to album successfully');
+                toggleSelectionMode();
+            }
+        }
+
+        function showNewAlbumModal() {
+            if (selectedActivities.size === 0) {
+                alert('Please select at least one place');
+                return;
+            }
+            showAlbumModal();
+        }
+
+        function enableSelectionMode(albumId) {
+            if (!albumId) {
+                selectionMode = false;
+                selectedActivities.clear();
+                document.querySelectorAll('.activity-card').forEach(card => {
+                    card.classList.remove('border-2', 'border-blue-500');
+                });
+                document.getElementById('saveSelectionBtn').classList.add('hidden');
+                return;
+            }
+
+            selectionMode = true;
+            currentAlbumId = albumId;
+            document.getElementById('saveSelectionBtn').classList.remove('hidden');
+        }
+
+        function toggleSelection(element, resultId, activityIndex) {
+            if (!selectionMode) return;
+
+            const key = `${resultId}-${activityIndex}`;
+            if (selectedActivities.has(key)) {
+                selectedActivities.delete(key);
+                element.classList.remove('border-2', 'border-blue-500');
+            } else {
+                selectedActivities.add(key);
+                element.classList.add('border-2', 'border-blue-500');
+            }
+        }
+
+        let currentEditId = null;
+        let currentEditIndex = null;
+
+        function editSelected() {
+            const selected = Array.from(selectedActivities);
+            if (selected.length !== 1) {
+                alert('Please select exactly one activity to edit');
+                return;
+            }
+
+            const [resultId, activityIndex] = selected[0].split('-');
+            currentEditId = resultId;
+            currentEditIndex = activityIndex;
+
+            // Fetch the current data
+            fetch(`/result/${resultId}/activity/${activityIndex}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('jsonEditor').value = JSON.stringify(data, null, 2);
+                    showJsonEditorModal();
+                });
+        }
+
+        function showJsonEditorModal() {
+            document.getElementById('jsonEditorModal').classList.remove('hidden');
+            document.getElementById('jsonEditorModal').classList.add('flex');
+        }
+
+        function hideJsonEditorModal() {
+            document.getElementById('jsonEditorModal').classList.add('hidden');
+            document.getElementById('jsonEditorModal').classList.remove('flex');
+        }
+
+        async function saveJsonChanges() {
+            try {
+                const jsonData = JSON.parse(document.getElementById('jsonEditor').value);
+
+                // Create a completely new activity object
+                const newActivity = {
+                    ...jsonData,
+                    timestamp: new Date().toISOString()
+                };
+
+                const response = await fetch(`/result/${currentEditId}/activity/${currentEditIndex}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newActivity),
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    hideJsonEditorModal();
+                    location.reload(); // Reload page to show completely new data
+                } else {
+                    alert('Failed to save changes: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function loadAlbums() {
+            const response = await fetch('/albums');
+            albums = await response.json();
+            const select = document.getElementById('albumSelect');
+            select.innerHTML = '<option value="">Select Album</option>';
+            albums.forEach(album => {
+                select.innerHTML += `<option value="${album.id}">${album.name}</option>`;
+            });
+        }
+
+        function toggleActivitySelection(resultId, activityIndex) {
+            const key = `${resultId}-${activityIndex}`;
+            if (selectedActivities.has(key)) {
+                selectedActivities.delete(key);
+            } else {
+                selectedActivities.add(key);
+            }
+            updateSelectedActivitiesDisplay();
+        }
+
+        function updateSelectedActivitiesDisplay() {
+            const container = document.getElementById('selectedActivities');
+            container.innerHTML = Array.from(selectedActivities).map(key => {
+                const [resultId, activityIndex] = key.split('-');
+                return `<div class="p-2 bg-gray-100 rounded mb-2">${key}</div>`;
+            }).join('');
+        }
+
+        function showAlbumModal() {
+            document.getElementById('albumModal').classList.remove('hidden');
+            document.getElementById('albumModal').classList.add('flex');
+        }
+
+        function hideAlbumModal() {
+            document.getElementById('albumModal').classList.add('hidden');
+            document.getElementById('albumModal').classList.remove('flex');
+        }
+
+        async function createAlbum() {
+            const name = document.getElementById('albumName').value;
+            if (!name) {
+                alert('Please enter an album name');
+                return;
+            }
+
+            const activities = Array.from(selectedActivities);
+            const response = await fetch('/album/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name,
+                    activities,
+                }),
+            });
+
+            if (response.ok) {
+                hideAlbumModal();
+                selectedActivities.clear();
+                loadAlbums();
+            }
+        }
+
+        async function deleteSelectedPlaces() {
+            if (selectedActivities.size === 0) {
+                alert('Please select at least one place to delete');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete the selected places?')) {
+                return;
+            }
+
+            const deletePromises = Array.from(selectedActivities).map(async (key) => {
+                const [resultId, activityIndex] = key.split('-');
+                const response = await fetch(`/result/${resultId}/activity/${activityIndex}`, {
+                    method: 'DELETE'
+                });
+                return response.ok;
+            });
+
+            const results = await Promise.all(deletePromises);
+
+            if (results.every(success => success)) {
+                // Remove the cards from the DOM
+                selectedActivities.forEach(key => {
+                    const [resultId, activityIndex] = key.split('-');
+                    const checkbox = document.querySelector(`input[data-result-id="${resultId}"][data-activity-index="${activityIndex}"]`);
+                    const card = checkbox.closest('.bg-white');
+                    card.remove();
+                });
+
+                selectedActivities.clear();
+                toggleSelectionMode();
+                alert('Selected places deleted successfully');
+            } else {
+                alert('Some places could not be deleted');
+            }
+        }
+
+        // Load albums on page load
+        loadAlbums();
+
+        function showModal(jsonData) {
+            const modal = document.getElementById('jsonModal');
+            const content = document.getElementById('jsonContent');
+            content.textContent = JSON.stringify(jsonData, null, 2);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function hideModal() {
+            const modal = document.getElementById('jsonModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('jsonModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideModal();
+            }
+        });
+    </script>
+</body>
+</html>

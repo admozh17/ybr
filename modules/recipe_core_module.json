@@ -1,0 +1,8 @@
+{
+  "module_id": "recipe_core",
+  "name": "Recipe Core Details",
+  "content": "For recipe-focused content, extract these essential components:\n- Dish name and cuisine type\n- Preparation time and cooking time\n- Difficulty level (implied or stated)\n- Special equipment required\n- Key ingredients with approximate quantities\n- Main cooking techniques used\n- Claimed benefits (quick, healthy, budget-friendly, etc.)",
+  "category": "subject",
+  "tags": ["cooking", "recipe", "tutorial"],
+  "dependencies": ["instruction_base"]
+}

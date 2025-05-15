@@ -1,0 +1,21 @@
+modules = ["python-3.12"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["libGL", "libGLU", "libxcrypt", "tesseract", "ffmpeg"]
+
+[workflows]
+runButton = "Run Web App"
+
+[[workflows.workflow]]
+name = "Run Web App"
+author = 39538919
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python web_app.py"
+
+[[ports]]
+localPort = 5000
+externalPort = 80

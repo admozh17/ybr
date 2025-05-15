@@ -1,0 +1,8 @@
+{
+  "module_id": "food_lifestyle",
+  "name": "Food Lifestyle and Routine Information",
+  "content": "For content focused on food within daily life, extract:\n- Type of routine (meal prep, shopping, daily eating)\n- Time frame covered (day, week, season)\n- Budget considerations if mentioned\n- Person/family size being served\n- Special constraints (time, dietary, financial)\n- Primary goal of the routine (convenience, health, budget)\n- Organization systems or containers shown",
+  "category": "subject",
+  "tags": ["lifestyle", "routine", "meal planning", "organization"],
+  "dependencies": ["instruction_base"]
+}

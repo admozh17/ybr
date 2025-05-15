@@ -1,0 +1,8 @@
+{
+  "module_id": "nutrition_health",
+  "name": "Nutrition and Health Information",
+  "content": "For nutrition and health-focused content, extract these key details:\n- Primary health benefit or claim (e.g., \"improves sleep\", \"boosts iron\")\n- Target audience (general, specific condition, demographic)\n- Scientific basis mentioned (study references, expert credentials)\n- Specific foods or nutrients highlighted\n- Quantifiable information (amounts, frequencies, durations)",
+  "category": "subject",
+  "tags": ["nutrition", "health", "wellness", "diet"],
+  "dependencies": ["instruction_base"]
+}

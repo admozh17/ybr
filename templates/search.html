@@ -1,0 +1,181 @@
+# Search Page Template
+
+Create a new template file at `templates/search.html`:
+
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Search Brick by Brick</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" id="search-input" class="form-control" placeholder="Search for places, dishes, activities...">
+                <button class="btn btn-primary" type="button" id="search-button">Search</button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-outline-secondary" type="button" id="filter-toggle">
+                Filters <i class="bi bi-funnel"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="row mb-4" id="filters-row" style="display: none;">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Filters</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="genre-filter" class="form-label">Genre</label>
+                            <select class="form-select" id="genre-filter">
+                                <option value="">All</option>
+                                <option value="restaurant">Restaurant</option>
+                                <option value="cafe">Cafe</option>
+                                <option value="bar">Bar</option>
+                                <option value="hotel">Hotel</option>
+                                <option value="museum">Museum</option>
+                                <option value="landmark">Landmark</option>
+                                <option value="shopping">Shopping</option>
+                                <option value="park">Park</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="city-filter" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city-filter" placeholder="e.g. Tokyo">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="country-filter" class="form-label">Country</label>
+                            <input type="text" class="form-control" id="country-filter" placeholder="e.g. Japan">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="region-filter" class="form-label">Region</label>
+                            <input type="text" class="form-control" id="region-filter" placeholder="e.g. Bali">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="results-container">
+        <div class="text-center py-5">
+            <p class="text-muted">Enter a search query to find content</p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
+    const filterToggle = document.getElementById('filter-toggle');
+    const filtersRow = document.getElementById('filters-row');
+    const resultsContainer = document.getElementById('results-container');
+    
+    // Toggle filters
+    filterToggle.addEventListener('click', function() {
+        if (filtersRow.style.display === 'none') {
+            filtersRow.style.display = 'flex';
+        } else {
+            filtersRow.style.display = 'none';
+        }
+    });
+    
+    // Search on Enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+    
+    // Search on button click
+    searchButton.addEventListener('click', performSearch);
+    
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        
+        // Show loading
+        resultsContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"></div><p class="mt-2">Searching...</p></div>';
+        
+        // Get filters
+        const filters = {
+            genre: document.getElementById('genre-filter').value,
+            city: document.getElementById('city-filter').value,
+            country: document.getElementById('country-filter').value,
+            region: document.getElementById('region-filter').value,
+        };
+        
+        // Build URL with query parameters
+        let url = `/api/search?q=${encodeURIComponent(query)}`;
+        for (const [key, value] of Object.entries(filters)) {
+            if (value) {
+                url += `&${key}=${encodeURIComponent(value)}`;
+            }
+        }
+        
+        // Perform search
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    resultsContainer.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="alert alert-info">No results found</div>';
+                    return;
+                }
+                
+                // Build results HTML
+                let html = '<div class="row">';
+                data.results.forEach(result => {
+                    html += `
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            <img src="${result.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" class="card-img-top" alt="${result.metadata.place_name || 'Result'}">
+                            <div class="card-body">
+                                <h5 class="card-title">${result.metadata.place_name || 'Unknown Place'}</h5>
+                                <p class="card-text">
+                                    <span class="badge bg-${getBadgeColor(result.metadata.genre)}">${result.metadata.genre || 'Unspecified'}</span>
+                                    ${result.metadata.city ? `<span class="badge bg-secondary">${result.metadata.city}</span>` : ''}
+                                </p>
+                                <p class="card-text small">Relevance: ${Math.round(result.score * 100)}%</p>
+                                <a href="/details/${result.id}/0" class="btn btn-primary btn-sm">View Details</a>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                });
+                html += '</div>';
+                
+                resultsContainer.innerHTML = html;
+            })
+            .catch(error => {
+                resultsContainer.innerHTML = `<div class="alert alert-danger">Search error: ${error.message}</div>`;
+            });
+    }
+    
+    function getBadgeColor(genre) {
+        const colors = {
+            'restaurant': 'success',
+            'cafe': 'info',
+            'bar': 'warning',
+            'hotel': 'primary',
+            'museum': 'secondary',
+            'landmark': 'dark',
+            'shopping': 'danger',
+            'park': 'success'
+        };
+        
+        return colors[genre] || 'secondary';
+    }
+});
+</script>
+{% endblock %}
+```

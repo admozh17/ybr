@@ -1,0 +1,38 @@
+Flask==2.2.3
+flask-sqlalchemy==3.0.3
+Werkzeug==2.2.3
+Flask-Login==0.6.2
+python-dotenv==1.0.0
+
+# Authentication
+Authlib==1.2.0
+email-validator==2.0.0
+
+# API and requests
+requests==2.28.2
+googlemaps==4.10.0
+
+# Data processing
+pydantic==1.10.7
+numpy==1.24.2
+pandas==1.5.3
+
+# Vision and speech processing
+opencv-python==4.7.0.72
+pytesseract==0.3.10
+pydub==0.25.1
+whisperx==2.3.0
+torch==2.0.0
+
+# Video downloading
+yt-dlp==2023.3.4
+
+# Text processing
+tqdm==4.65.0
+
+# AI/ML
+openai==0.27.4
+
+# Vector database
+qdrant-client==1.1.1
+sentence-transformers==2.2.2

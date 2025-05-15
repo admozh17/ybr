@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Details - Short-Form Info Extractor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-4xl mx-auto p-8">
+        <div class="flex justify-between items-center mb-8">
+            <a href="javascript:history.back()" class="inline-block text-blue-500 hover:text-blue-700">← Back</a>
+            {% if total_activities > 1 %}
+            <div class="space-x-4">
+                {% if activity_index > 0 %}
+                <a href="/details/{{ result_id }}/{{ activity_index - 1 }}" class="text-blue-500 hover:text-blue-700">← Previous</a>
+                {% endif %}
+                <span class="text-gray-600">{{ activity_index + 1 }} of {{ total_activities }}</span>
+                {% if activity_index < total_activities - 1 %}
+                <a href="/details/{{ result_id }}/{{ activity_index + 1 }}" class="text-blue-500 hover:text-blue-700">Next →</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <img src="{{ activity.get('image_url', 'https://via.placeholder.com/800x400') }}" 
+                 alt="{{ activity.get('place_name', 'Place') }}"
+                 class="w-full h-96 object-cover">
+
+            <div class="p-8">
+                <h1 class="text-3xl font-bold mb-6">{{ activity.get('place_name', 'Unknown') }}</h1>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4">Basic Information</h2>
+                        <dl class="space-y-2">
+                            <dt class="font-medium">Genre</dt>
+                            <dd class="ml-4 text-gray-600">{{ activity.get('genre', 'Unknown') }}</dd>
+
+                            {% if activity.get('cuisine') %}
+                            <dt class="font-medium">Cuisine</dt>
+                            <dd class="ml-4 text-gray-600">{{ activity.cuisine }}</dd>
+                            {% endif %}
+
+                            {% if activity.get('vibes') %}
+                            <dt class="font-medium">Vibes</dt>
+                            <dd class="ml-4 text-gray-600">{{ activity.vibes }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4">Location</h2>
+                        <dl class="space-y-2">
+                            {% if activity.get('availability', {}).get('street_address') %}
+                            <dt class="font-medium">Address</dt>
+                            <dd class="ml-4 text-gray-600">{{ activity.availability.street_address }}</dd>
+                            {% endif %}
+
+                            {% if activity.get('availability', {}).get('city') %}
+                            <dt class="font-medium">City</dt>
+                            <dd class="ml-4 text-gray-600">{{ activity.availability.city }}</dd>
+                            {% endif %}
+
+                            {% if activity.get('availability', {}).get('state') %}
+                            <dt class="font-medium">State</dt>
+                            <dd class="ml-4 text-gray-600">{{ activity.availability.state }}</dd>
+                            {% endif %}
+
+                            {% if activity.get('availability', {}).get('country') %}
+                            <dt class="font-medium">Country</dt>
+                            <dd class="ml-4 text-gray-600">{{ activity.availability.country }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+
+                {% if activity.get('ratings_feedback') %}
+                <div class="mt-8">
+                    <h2 class="text-xl font-semibold mb-4">Feedback</h2>
+                    {% if activity.ratings_feedback.get('service_feedback') %}
+                    <div class="mb-4">
+                        <h3 class="font-medium">Service</h3>
+                        <p class="ml-4 text-gray-600">{{ activity.ratings_feedback.service_feedback }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if activity.ratings_feedback.get('food_feedback') %}
+                    <div class="mb-4">
+                        <h3 class="font-medium">Food</h3>
+                        <p class="ml-4 text-gray-600">{{ activity.ratings_feedback.food_feedback }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if activity.ratings_feedback.get('vibes_feedback') %}
+                    <div class="mb-4">
+                        <h3 class="font-medium">Vibes</h3>
+                        <p class="ml-4 text-gray-600">{{ activity.ratings_feedback.vibes_feedback }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Similar Content Section -->
+        <div class="mt-12">
+            <h2 class="text-2xl font-bold mb-6">Similar Places</h2>
+            <div id="similar-content" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="col-span-full text-center py-6">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                    <p class="mt-2 text-gray-600">Finding similar content...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const similarContainer = document.getElementById('similar-content');
+            
+            // Fetch similar content
+            fetch(`/api/similar/{{ result_id }}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        similarContainer.innerHTML = `<div class="col-span-full p-4 bg-red-100 text-red-700 rounded">${data.error}</div>`;
+                        return;
+                    }
+                    
+                    if (data.similar.length === 0) {
+                        similarContainer.innerHTML = '<div class="col-span-full text-center py-6 text-gray-500">No similar places found</div>';
+                        return;
+                    }
+                    
+                    // Build results HTML
+                    let html = '';
+                    data.similar.forEach(item => {
+                        const activity = item.activity || {};
+                        html += `
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+                            <img src="${activity.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" 
+                                class="w-full h-48 object-cover" 
+                                alt="${activity.place_name || 'Similar Place'}">
+                            <div class="p-4 flex-grow">
+                                <h3 class="font-bold text-lg mb-2">${activity.place_name || 'Unknown Place'}</h3>
+                                <p class="mb-2">
+                                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded bg-gray-200 text-gray-700">${activity.genre || 'Unspecified'}</span>
+                                    ${activity.availability?.city ? `<span class="inline-block px-2 py-1 ml-1 text-xs font-semibold rounded bg-gray-200 text-gray-700">${activity.availability.city}</span>` : ''}
+                                </p>
+                                <a href="/details/${item.id}/0" class="mt-2 inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">View Details</a>
+                            </div>
+                        </div>
+                        `;
+                    });
+                    
+                    similarContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    similarContainer.innerHTML = `<div class="col-span-full p-4 bg-red-100 text-red-700 rounded">Error loading similar content: ${error.message}</div>`;
+                });
+        });
+    </script>
+</body>
+</html>
