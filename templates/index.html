@@ -1,260 +1,1096 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Short-Form Info Extractor</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-100 min-h-screen p-8">
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold mb-8 text-center">Short-Form Info Extractor</h1>
+{% extends "base.html" %}
 
-        <!-- Welcome message for logged-in users -->
-        {% if current_user.is_authenticated %}
-        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-8 rounded shadow-md">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="font-bold">Welcome back, {{ current_user.username }}!</h4>
-                    <p class="text-sm">Ready to analyze more videos? Just paste a URL below to get started.</p>
+{% block content %}
+<div class="container mt-4">
+    <!-- Welcome/Auth Section for Anonymous Users -->
+    {% if not current_user.is_authenticated %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Welcome to Video Analyzer</h4>
                 </div>
-                <a href="{{ url_for('profile') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-                    My Profile
-                </a>
+                <div class="card-body">
+                    <p>Discover information about restaurants, cafes, landmarks and more from short-form videos.</p>
+                    <p>Our advanced AI extracts details like:</p>
+                    <ul>
+                        <li>Place names and addresses</li>
+                        <li>Food dishes with descriptions</li>
+                        <li>Ambiance and visual details</li>
+                        <li>Location coordinates for maps</li>
+                    </ul>
+                    <p>Create an account to save your favorite places in custom albums!</p>
+                </div>
             </div>
         </div>
-        {% endif %}
-
-        <!-- Search component -->
-        <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-            <div class="p-6">
-                <h3 class="text-xl font-bold text-center mb-4">Search Places & Experiences</h3>
-                <div class="flex">
-                    <input type="text" id="search-input" class="flex-grow p-2 border rounded-l" placeholder="Search for restaurants, cafes, activities...">
-                    <a href="/search" id="search-button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        Search
-                    </a>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Get Started</h4>
                 </div>
-                <p class="text-gray-500 text-center text-sm mt-2">
-                    Find places by name, type, cuisine, or location
+                <div class="card-body">
+                    <p>Create an account to save and organize your favorite places:</p>
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="{{ url_for('register') }}" class="btn btn-success">Create Account</a>
+                    </div>
+                    <p>Already have an account?</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary">Log In</a>
+                    </div>
+                    <hr>
+                    <p class="text-muted">Or continue as a guest to analyze videos without saving results.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Search Bar -->
+    <div class="row mb-4">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Search Analyzed Content</h4>
+                </div>
+                <div class="card-body">
+                    <div id="search-input" class="input-group mb-3">
+                        <input type="text" id="search-query" class="form-control" placeholder="Search for restaurants, cafes, landmarks, dishes...">
+                        <button id="search-button" class="btn btn-outline-primary">Search</button>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <select id="genre-filter" class="form-select">
+                                <option value="">All Place Types</option>
+                                <option value="restaurant">Restaurants</option>
+                                <option value="cafe">Cafes</option>
+                                <option value="landmark">Landmarks</option>
+                                <option value="hotel">Hotels</option>
+                                <option value="park">Parks</option>
+                                <option value="shopping">Shopping</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="location-filter" class="form-select">
+                                <option value="">All Locations</option>
+                                <!-- Locations dynamically populated via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="visual-filter" class="form-select">
+                                <option value="">All Visual Features</option>
+                                <option value="indoor">Indoor</option>
+                                <option value="outdoor">Outdoor</option>
+                                <option value="food">Food</option>
+                                <option value="drinks">Drinks</option>
+                                <option value="nature">Nature</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Album Gallery Grid -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Featured Albums</h4>
+                    <a href="{{ url_for('gallery') }}" class="btn btn-light btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="album-gallery">
+                        <!-- Album cards will be populated here via JavaScript -->
+                        <!-- Loading placeholder -->
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 placeholder-glow">
+                                <div class="placeholder col-12" style="height: 150px;"></div>
+                                <div class="card-body">
+                                    <h5 class="card-title placeholder col-6"></h5>
+                                    <p class="card-text placeholder col-8"></p>
+                                    <p class="card-text placeholder col-4"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 placeholder-glow">
+                                <div class="placeholder col-12" style="height: 150px;"></div>
+                                <div class="card-body">
+                                    <h5 class="card-title placeholder col-6"></h5>
+                                    <p class="card-text placeholder col-8"></p>
+                                    <p class="card-text placeholder col-4"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 placeholder-glow">
+                                <div class="placeholder col-12" style="height: 150px;"></div>
+                                <div class="card-body">
+                                    <h5 class="card-title placeholder col-6"></h5>
+                                    <p class="card-text placeholder col-8"></p>
+                                    <p class="card-text placeholder col-4"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Video Analysis</h4>
+                </div>
+                <div class="card-body">
+                    <form id="analyze-form">
+                        <div class="mb-3">
+                            <label for="url" class="form-label">Video URL (Instagram Reel, TikTok, YouTube Short)</label>
+                            <input type="text" class="form-control" id="url" name="url" required placeholder="https://www.tiktok.com/@user/video/123456789">
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" value="true" id="enable_visual" name="enable_visual">
+                            <label class="form-check-label" for="enable_visual">
+                                Enable visual recognition (may take longer)
+                            </label>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" id="submit-btn">Analyze Video</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Status Section -->
+    <div class="row mb-4 d-none" id="processing-section">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Analysis Progress</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p id="status-message">Processing video...</p>
+                        <div class="progress">
+                            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Waterfall Pipeline Visualization -->
+                    <h5 class="mt-4 mb-3">Pipeline Progress</h5>
+                    <div id="pipeline-stages" class="pipeline-container">
+                        <!-- Pipeline stages will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="row mb-4 d-none" id="results-section">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Results</h4>
+                </div>
+                <div class="card-body" id="results-container">
+                    <div id="results-empty" class="text-center p-4">
+                        <p class="text-muted">Analysis not started yet.</p>
+                    </div>
+                    <div id="results-content" class="d-none">
+                        <div class="mb-4">
+                            <h3 id="content-type-heading">Video Type: <span id="content-type"></span></h3>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="text-muted">Video URL:</div>
+                                    <div><a id="video-url" href="#" target="_blank"></a></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-muted">Processing Time:</div>
+                                    <div id="processing-time"></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-muted">Caption:</div>
+                                    <div id="caption-text" class="text-truncate"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Performance Metrics -->
+                            <div class="accordion mb-4" id="performanceAccordion">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="performanceHeading">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                                data-bs-target="#performanceBody" aria-expanded="false" aria-controls="performanceBody">
+                                            Pipeline Performance Metrics
+                                        </button>
+                                    </h2>
+                                    <div id="performanceBody" class="accordion-collapse collapse" aria-labelledby="performanceHeading" data-bs-parent="#performanceAccordion">
+                                        <div class="accordion-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h5>Stage Times</h5>
+                                                    <ul class="list-group list-group-flush">
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Download
+                                                            <span id="download-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Stage 0 (Metadata)
+                                                            <span id="stage0-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Stage 1 (Basic)
+                                                            <span id="stage1-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Stage 2 (Vision)
+                                                            <span id="stage2-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Stage 3 (Fusion)
+                                                            <span id="stage3-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                                                            Total Time
+                                                            <span id="total-time" class="badge bg-success rounded-pill">0.00s</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h5>Component Times</h5>
+                                                    <ul class="list-group list-group-flush">
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Caption Fetch
+                                                            <span id="caption-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Voice Activity Detection
+                                                            <span id="vad-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            ASR Transcription
+                                                            <span id="asr-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            CLIP Gate
+                                                            <span id="clip-gate-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            OCR
+                                                            <span id="ocr-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            Vision Processing
+                                                            <span id="vision-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            LLM Parsing
+                                                            <span id="llm-parse-time" class="badge bg-primary rounded-pill">0.00s</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Activities -->
+                        <h4 class="mb-3">Places & Activities</h4>
+                        <div class="row mb-3" id="activities-container">
+                            <!-- Activities will be inserted here -->
+                        </div>
+                        
+                        <!-- Save to Album -->
+                        <div class="card mt-4 mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Save to Album</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="album-select">Select Existing Album</label>
+                                            <select class="form-select" id="album-select">
+                                                <option value="">Loading albums...</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" class="btn btn-primary" id="add-to-album-btn" disabled>
+                                            Add Selected Items to Album
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label for="new-album-name">Create New Album</label>
+                                            <input type="text" class="form-control" id="new-album-name" placeholder="Enter album name">
+                                        </div>
+                                        <button type="button" class="btn btn-success" id="create-album-btn">
+                                            Create Album & Add Selected Items
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Previous Results Section -->
+    {% if previous_results %}
+    <div class="row mb-4">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">Previous Analyses</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>URL</th>
+                                    <th>Type</th>
+                                    <th>Places</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in previous_results %}
+                                <tr>
+                                    <td>{{ result.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <a href="{{ result.url }}" target="_blank" class="text-truncate d-inline-block" style="max-width: 200px;">
+                                            {{ result.url }}
+                                        </a>
+                                    </td>
+                                    <td>{{ result.data.get('content_type', 'Unknown') }}</td>
+                                    <td>{{ result.data.get('activities', [])|length }}</td>
+                                    <td>
+                                        {% if result.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif result.status == 'error' %}
+                                            <span class="badge bg-danger">Error</span>
+                                        {% elif result.status == 'processing' %}
+                                            <span class="badge bg-warning">Processing ({{ result.progress }}%)</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ result.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.status == 'completed' and result.data.get('activities') %}
+                                            <a href="/details/{{ result.id }}/0" class="btn btn-sm btn-primary">View</a>
+                                        {% elif result.status == 'processing' %}
+                                            <button class="btn btn-sm btn-info continue-analysis" data-result-id="{{ result.id }}">Continue</button>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-secondary" disabled>View</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Activity Card Template -->
+<template id="activity-card-template">
+    <div class="col-md-4 mb-4 activity-card">
+        <div class="card h-100">
+            <img src="" class="card-img-top activity-image" alt="Place image">
+            <div class="card-body">
+                <div class="form-check mb-2 activity-select-container">
+                    <input class="form-check-input activity-select" type="checkbox" value="">
+                    <label class="form-check-label fw-bold activity-title"></label>
+                </div>
+                <h6 class="card-subtitle mb-2 text-muted activity-genre"></h6>
+                <p class="activity-address"></p>
+                <div class="activity-visual-data mb-2">
+                    <!-- Visual data badges will be added here -->
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="#" class="btn btn-sm btn-primary activity-view-btn">View Details</a>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- Album Card Template -->
+<template id="album-card-template">
+    <div class="col-md-4 mb-4 album-card">
+        <div class="card h-100">
+            <div class="album-cover-container">
+                <div class="album-cover">
+                    <img src="" class="activity-image-1" alt="Activity image">
+                </div>
+                <div class="album-cover">
+                    <img src="" class="activity-image-2" alt="Activity image">
+                </div>
+                <div class="album-cover">
+                    <img src="" class="activity-image-3" alt="Activity image">
+                </div>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title album-title"></h5>
+                <p class="card-text album-description">
+                    <span class="activity-count"></span> activities
+                    <span class="album-date text-muted"></span>
                 </p>
             </div>
-        </div>
-
-        <!-- URL input form -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <form id="urlForm" class="flex gap-4">
-                <input type="text" id="url" name="url" placeholder="Enter Instagram/TikTok/YouTube URL" 
-                       class="flex-1 p-2 border rounded" required>
-                <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
-                    Analyze
-                </button>
-            </form>
-        </div>
-
-        <!-- Authentication section for non-logged in users -->
-        {% if not current_user.is_authenticated %}
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h3 class="text-xl font-bold text-center mb-4">Account Access</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="md:border-r md:pr-6">
-                    <h4 class="font-semibold mb-2">Already have an account?</h4>
-                    <p class="text-gray-600 mb-4">Log in to access your saved videos and collections.</p>
-                    <a href="{{ url_for('login') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded inline-flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                        </svg>
-                        Login
-                    </a>
-                </div>
-                <div class="md:pl-6">
-                    <h4 class="font-semibold mb-2">New to Brick by Brick?</h4>
-                    <p class="text-gray-600 mb-4">Create an account to save and organize your analyzed videos.</p>
-                    <a href="{{ url_for('register') }}" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded inline-flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        </svg>
-                        Register
-                    </a>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Loading and results section -->
-        <div id="loading" class="hidden text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p class="mt-4">Analyzing video...</p>
-        </div>
-
-        <div id="results" class="hidden">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-semibold mb-4">Results</h2>
-                <div id="resultContent" class="space-y-4"></div>
+            <div class="card-footer">
+                <a href="#" class="btn btn-sm btn-primary album-view-btn">View Album</a>
             </div>
         </div>
     </div>
+</template>
+{% endblock %}
 
-    <div class="mt-8">
-        <div class="flex justify-center mb-8">
-            <a href="/gallery" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
-                View Results Gallery
-            </a>
-        </div>
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-2xl font-semibold">{% if current_user.is_authenticated %}Your Albums{% else %}Albums{% endif %}</h2>
-            <button onclick="showAlbumModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                Create Album
-            </button>
-        </div>
-        <div id="albumsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Albums will be loaded here -->
-        </div>
-    </div>
-
-    <!-- Album Creation Modal -->
-    <div id="albumModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-        <div class="bg-white rounded-lg p-8 max-w-md w-full relative">
-            <button onclick="hideAlbumModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-            <h2 class="text-2xl font-bold mb-4">Create New Album</h2>
-            <input type="text" id="albumName" placeholder="Album Name" class="w-full p-2 border rounded mb-4">
-            <button onclick="createAlbum()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full">
-                Create Album
-            </button>
-        </div>
-    </div>
-
-    <script>
-        async function loadAlbums() {
-            const response = await fetch('/albums');
-            const albums = await response.json();
-            const albumsList = document.getElementById('albumsList');
-
-            albumsList.innerHTML = albums.map(album => `
-                <a href="/album/${album.id}" class="block">
-                    <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
-                        <h3 class="text-xl font-semibold">${album.name}</h3>
-                        <p class="text-gray-600">${album.activities.length} places</p>
-                        <p class="text-sm text-gray-500">${new Date(album.timestamp).toLocaleDateString()}</p>
-                    </div>
-                </a>
-            `).join('');
-        }
-
-        function showAlbumModal() {
-            document.getElementById('albumModal').classList.remove('hidden');
-            document.getElementById('albumModal').classList.add('flex');
-        }
-
-        function hideAlbumModal() {
-            document.getElementById('albumModal').classList.add('hidden');
-            document.getElementById('albumModal').classList.remove('flex');
-        }
-
-        async function createAlbum() {
-            const name = document.getElementById('albumName').value;
-            if (!name) {
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/progress-tracker.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements
+        const analyzeForm = document.getElementById('analyze-form');
+        const processingSection = document.getElementById('processing-section');
+        const resultsSection = document.getElementById('results-section');
+        const resultsContent = document.getElementById('results-content');
+        const resultsEmpty = document.getElementById('results-empty');
+        const activitiesContainer = document.getElementById('activities-container');
+        const progressBar = document.getElementById('progress-bar');
+        const statusMessage = document.getElementById('status-message');
+        const pipelineStages = document.getElementById('pipeline-stages');
+        const activityCardTemplate = document.getElementById('activity-card-template');
+        const albumCardTemplate = document.getElementById('album-card-template');
+        const albumGallery = document.getElementById('album-gallery');
+        const searchButton = document.getElementById('search-button');
+        
+        // Album elements
+        const albumSelect = document.getElementById('album-select');
+        const newAlbumName = document.getElementById('new-album-name');
+        const addToAlbumBtn = document.getElementById('add-to-album-btn');
+        const createAlbumBtn = document.getElementById('create-album-btn');
+        
+        // Search elements
+        const searchQuery = document.getElementById('search-query');
+        const genreFilter = document.getElementById('genre-filter');
+        const locationFilter = document.getElementById('location-filter');
+        const visualFilter = document.getElementById('visual-filter');
+        
+        // Continue analysis buttons
+        const continueButtons = document.querySelectorAll('.continue-analysis');
+        
+        // Global variables
+        let currentResultId = null;
+        let progressTracker = null;
+        
+        // Load initial data
+        loadAlbums();
+        loadFeaturedAlbums();
+        populateLocationFilter();
+        
+        // Form submission handler
+        analyzeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Reset previous results
+            resetResults();
+            
+            // Show processing section
+            processingSection.classList.remove('d-none');
+            
+            // Get form data
+            const formData = new FormData(analyzeForm);
+            
+            // Submit form
+            fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                // Store result ID
+                currentResultId = data.id;
+                
+                // Initialize progress tracker
+                progressTracker = new ProgressTracker(currentResultId);
+                progressTracker.init(progressBar, statusMessage, pipelineStages, resultsSection);
+                
+                // Set callbacks
+                progressTracker.setFinishedCallback(displayResults);
+                progressTracker.setErrorCallback(showError);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('An error occurred while submitting the analysis request.');
+            });
+        });
+        
+        // Continue analysis handler
+        continueButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const resultId = this.getAttribute('data-result-id');
+                
+                // Reset previous results
+                resetResults();
+                
+                // Show processing section
+                processingSection.classList.remove('d-none');
+                
+                // Store result ID
+                currentResultId = resultId;
+                
+                // Initialize progress tracker
+                progressTracker = new ProgressTracker(currentResultId);
+                progressTracker.init(progressBar, statusMessage, pipelineStages, resultsSection);
+                
+                // Set callbacks
+                progressTracker.setFinishedCallback(displayResults);
+                progressTracker.setErrorCallback(showError);
+            });
+        });
+        
+        // Album functionality
+        addToAlbumBtn.addEventListener('click', function() {
+            const albumId = albumSelect.value;
+            if (!albumId) {
+                alert('Please select an album');
+                return;
+            }
+            
+            const selectedActivities = getSelectedActivities();
+            if (selectedActivities.length === 0) {
+                alert('Please select at least one activity');
+                return;
+            }
+            
+            addToAlbum(albumId, selectedActivities);
+        });
+        
+        createAlbumBtn.addEventListener('click', function() {
+            const albumName = newAlbumName.value.trim();
+            if (!albumName) {
                 alert('Please enter an album name');
                 return;
             }
-
-            const response = await fetch('/album/create', {
+            
+            const selectedActivities = getSelectedActivities();
+            if (selectedActivities.length === 0) {
+                alert('Please select at least one activity');
+                return;
+            }
+            
+            createAlbumAndAdd(albumName, selectedActivities);
+        });
+        
+        // Search functionality
+        searchButton.addEventListener('click', function() {
+            const query = searchQuery.value.trim();
+            const genre = genreFilter.value;
+            const location = locationFilter.value;
+            const visual = visualFilter.value;
+            
+            if (!query && !genre && !location && !visual) {
+                alert('Please enter a search query or select a filter');
+                return;
+            }
+            
+            // Redirect to search page with parameters
+            const params = new URLSearchParams();
+            if (query) params.append('q', query);
+            if (genre) params.append('genre', genre);
+            if (location) params.append('location', location);
+            if (visual) params.append('visual', visual);
+            
+            window.location.href = `/search?${params.toString()}`;
+        });
+        
+        // Enter key in search box
+        searchQuery.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                searchButton.click();
+            }
+        });
+        
+        // Functions
+        function resetResults() {
+            currentResultId = null;
+            resultsSection.classList.add('d-none');
+            resultsContent.classList.add('d-none');
+            resultsEmpty.classList.remove('d-none');
+            activitiesContainer.innerHTML = '';
+        }
+        
+        function showError(message) {
+            statusMessage.textContent = `Error: ${message}`;
+            statusMessage.classList.add('text-danger');
+            progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+            progressBar.classList.add('bg-danger');
+        }
+        
+        function displayResults(data) {
+            // Show results section
+            resultsSection.classList.remove('d-none');
+            resultsEmpty.classList.add('d-none');
+            resultsContent.classList.remove('d-none');
+            
+            // Set basic info
+            document.getElementById('content-type').textContent = data.data.content_type || 'Unknown';
+            document.getElementById('video-url').textContent = data.url;
+            document.getElementById('video-url').href = data.url;
+            document.getElementById('processing-time').textContent = `${data.data.processing_time.toFixed(2)} seconds`;
+            document.getElementById('caption-text').textContent = data.data.caption_text || 'None';
+            
+            // Set performance metrics
+            const profile = data.data.performance_profile || {};
+            
+            // Stage times
+            document.getElementById('download-time').textContent = `${(profile.download_time || 0).toFixed(2)}s`;
+            document.getElementById('stage0-time').textContent = `${(profile.stage0_time || 0).toFixed(2)}s`;
+            document.getElementById('stage1-time').textContent = `${(profile.stage1_time || 0).toFixed(2)}s`;
+            document.getElementById('stage2-time').textContent = `${(profile.stage2_time || 0).toFixed(2)}s`;
+            document.getElementById('stage3-time').textContent = `${(profile.stage3_time || 0).toFixed(2)}s`;
+            document.getElementById('total-time').textContent = `${(profile.total_time || 0).toFixed(2)}s`;
+            
+            // Component times
+            document.getElementById('caption-time').textContent = `${(profile.caption_time || 0).toFixed(2)}s`;
+            document.getElementById('vad-time').textContent = `${(profile.vad_time || 0).toFixed(2)}s`;
+            document.getElementById('asr-time').textContent = `${(profile.asr_time || 0).toFixed(2)}s`;
+            document.getElementById('clip-gate-time').textContent = `${(profile.clip_gate_time || 0).toFixed(2)}s`;
+            document.getElementById('ocr-time').textContent = `${(profile.ocr_time || 0).toFixed(2)}s`;
+            document.getElementById('vision-time').textContent = `${(profile.vision_time || 0).toFixed(2)}s`;
+            document.getElementById('llm-parse-time').textContent = `${(profile.llm_parse_time || 0).toFixed(2)}s`;
+            
+            // Clear activities container
+            activitiesContainer.innerHTML = '';
+            
+            // Display activities
+            const activities = data.data.activities || [];
+            activities.forEach((activity, index) => {
+                const card = createActivityCard(activity, index, data.id);
+                activitiesContainer.appendChild(card);
+            });
+            
+            // Enable album buttons
+            addToAlbumBtn.disabled = false;
+        }
+        
+        function createActivityCard(activity, index, resultId) {
+            const template = activityCardTemplate.content.cloneNode(true);
+            
+            // Set activity data
+            const activityId = `${resultId}-${index}`;
+            const checkboxInput = template.querySelector('.activity-select');
+            checkboxInput.value = activityId;
+            checkboxInput.id = `activity-${activityId}`;
+            
+            template.querySelector('.activity-title').textContent = activity.place_name || 'Unknown Place';
+            template.querySelector('.activity-title').setAttribute('for', `activity-${activityId}`);
+            template.querySelector('.activity-genre').textContent = activity.genre || 'Unspecified';
+            
+            // Set address
+            let addressText = '';
+            const availability = activity.availability || {};
+            if (availability.street_address) {
+                addressText = availability.street_address;
+            } else {
+                const addressParts = [];
+                if (availability.city) addressParts.push(availability.city);
+                if (availability.state) addressParts.push(availability.state);
+                if (availability.country) addressParts.push(availability.country);
+                addressText = addressParts.join(', ');
+            }
+            template.querySelector('.activity-address').textContent = addressText || 'No address available';
+            
+            // Set image
+            const imageElement = template.querySelector('.activity-image');
+            imageElement.src = activity.image_url || '/static/img/placeholder.jpg';
+            imageElement.alt = activity.place_name || 'Place image';
+            
+            // Set details link
+            template.querySelector('.activity-view-btn').href = `/details/${resultId}/${index}`;
+            
+            // Add visual data badges if available
+            const visualDataContainer = template.querySelector('.activity-visual-data');
+            if (activity.visual_data) {
+                // Add objects
+                const objects = activity.visual_data.detected_objects || [];
+                objects.slice(0, 3).forEach(obj => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-info me-1 mb-1';
+                    badge.textContent = obj.label;
+                    visualDataContainer.appendChild(badge);
+                });
+                
+                // Add scenes
+                const scenes = activity.visual_data.scene_categories || [];
+                scenes.slice(0, 2).forEach(scene => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-secondary me-1 mb-1';
+                    badge.textContent = scene.category;
+                    visualDataContainer.appendChild(badge);
+                });
+                
+                // Add food items
+                const foodItems = activity.visual_data.food_items || [];
+                foodItems.slice(0, 2).forEach(food => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge bg-success me-1 mb-1';
+                    badge.textContent = food.name;
+                    visualDataContainer.appendChild(badge);
+                });
+            }
+            
+            return template;
+        }
+        
+        function createAlbumCard(album) {
+            const template = albumCardTemplate.content.cloneNode(true);
+            
+            // Set album data
+            template.querySelector('.album-title').textContent = album.name;
+            template.querySelector('.activity-count').textContent = album.activities.length;
+            
+            // Format date
+            const albumDate = new Date(album.timestamp);
+            template.querySelector('.album-date').textContent = ` • ${albumDate.toLocaleDateString()}`;
+            
+            // Set album view link
+            template.querySelector('.album-view-btn').href = `/album/${album.id}`;
+            
+            // Set album cover images
+            // We'll use placeholder images if no activities or no images available
+            const placeholderImage = '/static/img/placeholder.jpg';
+            const coverImages = [
+                template.querySelector('.activity-image-1'),
+                template.querySelector('.activity-image-2'),
+                template.querySelector('.activity-image-3')
+            ];
+            
+            // Try to fetch activity images
+            fetch(`/album/${album.id}/preview`)
+                .then(response => response.json())
+                .then(data => {
+                    const imageUrls = data.image_urls || [];
+                    
+                    // Set images or placeholders
+                    coverImages.forEach((img, index) => {
+                        img.src = index < imageUrls.length ? imageUrls[index] : placeholderImage;
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading album preview:', error);
+                    coverImages.forEach(img => {
+                        img.src = placeholderImage;
+                    });
+                });
+            
+            return template;
+        }
+        
+        function getSelectedActivities() {
+            const checkboxes = document.querySelectorAll('.activity-select:checked');
+            return Array.from(checkboxes).map(checkbox => checkbox.value);
+        }
+        
+        function loadAlbums() {
+            fetch('/albums')
+                .then(response => response.json())
+                .then(albums => {
+                    albumSelect.innerHTML = '';
+                    
+                    if (albums.length === 0) {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = 'No albums available';
+                        albumSelect.appendChild(option);
+                        return;
+                    }
+                    
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = 'Select an album';
+                    albumSelect.appendChild(defaultOption);
+                    
+                    albums.forEach(album => {
+                        const option = document.createElement('option');
+                        option.value = album.id;
+                        option.textContent = album.name;
+                        albumSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading albums:', error);
+                    albumSelect.innerHTML = '<option value="">Error loading albums</option>';
+                });
+        }
+        
+        function loadFeaturedAlbums() {
+            fetch('/albums?featured=true')
+                .then(response => response.json())
+                .then(albums => {
+                    albumGallery.innerHTML = '';
+                    
+                    if (albums.length === 0) {
+                        albumGallery.innerHTML = '<div class="col-12 text-center"><p class="text-muted">No albums available</p></div>';
+                        return;
+                    }
+                    
+                    // Show first 3 albums
+                    albums.slice(0, 3).forEach(album => {
+                        const card = createAlbumCard(album);
+                        albumGallery.appendChild(card);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading featured albums:', error);
+                    albumGallery.innerHTML = '<div class="col-12 text-center"><p class="text-danger">Error loading albums</p></div>';
+                });
+        }
+        
+        function populateLocationFilter() {
+            // Get available locations from API
+            fetch('/api/locations')
+                .then(response => response.json())
+                .then(locations => {
+                    locationFilter.innerHTML = '<option value="">All Locations</option>';
+                    
+                    locations.forEach(location => {
+                        const option = document.createElement('option');
+                        option.value = location.id;
+                        option.textContent = location.name;
+                        locationFilter.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading locations:', error);
+                    // Just load some default locations
+                    const defaultLocations = ['New York', 'Los Angeles', 'Chicago', 'London', 'Tokyo', 'Paris'];
+                    locationFilter.innerHTML = '<option value="">All Locations</option>';
+                    
+                    defaultLocations.forEach(location => {
+                        const option = document.createElement('option');
+                        option.value = location.toLowerCase();
+                        option.textContent = location;
+                        locationFilter.appendChild(option);
+                    });
+                });
+        }
+        
+        function addToAlbum(albumId, activities) {
+            fetch(`/album/${albumId}/add`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    name,
-                    activities: []
-                }),
+                    activities: activities
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+                
+                alert('Activities added to album successfully!');
+            })
+            .catch(error => {
+                console.error('Error adding to album:', error);
+                alert('An error occurred while adding to album.');
             });
-
-            if (response.ok) {
-                hideAlbumModal();
-                await loadAlbums();
-                document.getElementById('albumName').value = '';
-            }
         }
-
-        loadAlbums();
-    </script>
-    <script>
-        document.getElementById('urlForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const url = document.getElementById('url').value;
-
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('results').classList.add('hidden');
-
-            try {
-                const response = await fetch('/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `url=${encodeURIComponent(url)}`
-                });
-
-                const data = await response.json();
-
-                const resultContent = document.getElementById('resultContent');
-                resultContent.innerHTML = '';
-
-                data.activities.forEach((activity, index) => {
-                    const card = document.createElement('div');
-                    card.className = 'border rounded-lg p-4 mb-4';
-                    card.innerHTML = `
-                        <h3 class="text-xl font-semibold">${activity.place_name}</h3>
-                        <p class="text-gray-600">Genre: ${activity.genre}</p>
-                        ${activity.cuisine ? `<p>Cuisine: ${activity.cuisine}</p>` : ''}
-                        ${activity.vibes ? `<p>Vibes: ${activity.vibes}</p>` : ''}
-                        <p>Location: ${[
-                            activity.availability.street_address,
-                            activity.availability.city,
-                            activity.availability.state,
-                            activity.availability.country
-                        ].filter(Boolean).join(', ')}</p>
-                    `;
-                    resultContent.appendChild(card);
-                });
-
-                document.getElementById('results').classList.remove('hidden');
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error analyzing video');
-            } finally {
-                document.getElementById('loading').classList.add('hidden');
-            }
-        });
-    </script>
-    <!-- Added search functionality script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('search-input');
-            const searchButton = document.getElementById('search-button');
-            
-            // Make the input work with Enter key
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && searchInput.value.trim() !== '') {
-                    window.location.href = '/search?q=' + encodeURIComponent(searchInput.value.trim());
+        
+        function createAlbumAndAdd(albumName, activities) {
+            fetch('/album/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: albumName,
+                    activities: activities
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    return;
                 }
+                
+                alert('Album created and activities added successfully!');
+                newAlbumName.value = '';
+                
+                // Reload albums
+                loadAlbums();
+                loadFeaturedAlbums();
+            })
+            .catch(error => {
+                console.error('Error creating album:', error);
+                alert('An error occurred while creating album.');
             });
-            
-            // Make the button redirect to search page with query
-            searchButton.addEventListener('click', function(e) {
-                if (searchInput.value.trim() !== '') {
-                    e.preventDefault(); // Prevent default link behavior
-                    window.location.href = '/search?q=' + encodeURIComponent(searchInput.value.trim());
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+        }
+    });
+</script>
+
+<style>
+/* Waterfall pipeline visualization styles */
+.pipeline-container {
+    position: relative;
+    padding: 1rem 0;
+}
+
+.pipeline-stage {
+    display: flex;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.stage-indicator {
+    position: relative;
+    padding-right: 20px;
+}
+
+.stage-number {
+    width: 30px;
+    height: 30px;
+    background-color: #ccc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 15px;
+    z-index: 2;
+    position: relative;
+}
+
+.stage-line {
+    position: absolute;
+    left: 15px;
+    top: 30px;
+    width: 2px;
+    height: calc(100% + 15px);
+    background-color: #ccc;
+    z-index: 1;
+}
+
+.pipeline-stage:last-child .stage-line {
+    display: none;
+}
+
+.stage-details {
+    flex-grow: 1;
+}
+
+.stage-results {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.partial-result {
+    margin-bottom: 0.5rem;
+}
+
+.partial-result h5 {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+    color: #6c757d;
+}
+
+.partial-result p {
+    margin-bottom: 0.25rem;
+    white-space: pre-line;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+/* Stage states */
+.pipeline-stage.active .stage-number {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.pipeline-stage.active .stage-line {
+    background-color: #0d6efd;
+}
+
+.pipeline-stage.completed .stage-number {
+    background-color: #198754;
+    color: white;
+}
+
+.pipeline-stage.completed .stage-line {
+    background-color: #198754;
+}
+
+/* Activity cards */
+.activity-card .card-img-top {
+    height: 180px;
+    object-fit: cover;
+}
+
+.activity-visual-data {
+    min-height: 30px;
+}
+
+/* Album gallery styles */
+.album-cover-container {
+    display: flex;
+    height: 180px;
+    position: relative;
+    overflow: hidden;
+}
+
+.album-cover {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.album-cover img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+}
+
+.album-cover:nth-child(1) {
+    z-index: 3;
+    transform: translateX(10%) scale(1.05);
+}
+
+.album-cover:nth-child(2) {
+    z-index: 2;
+    transform: translateX(5%) scale(1.03);
+}
+
+.album-cover:nth-child(3) {
+    z-index: 1;
+}
+</style>
+{% endblock %}

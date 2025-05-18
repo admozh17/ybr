@@ -76,6 +76,64 @@
                     </div>
                 </div>
 
+                {% if activity.get('visual_data') %}
+                <div class="mt-8 border rounded-lg p-4 bg-gray-50">
+                    <h2 class="text-xl font-semibold mb-4">Visual Analysis</h2>
+                    
+                    {% if activity.visual_data.scene_categories %}
+                    <div class="mb-4">
+                        <h3 class="font-medium">Scene Categories:</h3>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            {% for scene in activity.visual_data.scene_categories[:5] %}
+                            <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                                {{ scene.category }} ({{ "%.2f"|format(scene.confidence) }})
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if activity.visual_data.detected_objects %}
+                    <div class="mb-4">
+                        <h3 class="font-medium">Detected Objects:</h3>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            {% for obj in activity.visual_data.detected_objects[:8] %}
+                            <span class="bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">
+                                {{ obj.label }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if activity.visual_data.food_items %}
+                    <div class="mb-4">
+                        <h3 class="font-medium">Food Items:</h3>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            {% for food in activity.visual_data.food_items[:5] %}
+                            <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">
+                                {{ food.name }} ({{ "%.2f"|format(food.confidence) }})
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if activity.visual_data.activities %}
+                    <div class="mb-4">
+                        <h3 class="font-medium">Activities:</h3>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            {% for act in activity.visual_data.activities[:5] %}
+                            <span class="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">
+                                {{ act.activity }} ({{ "%.2f"|format(act.confidence) }})
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 {% if activity.get('ratings_feedback') %}
                 <div class="mt-8">
                     <h2 class="text-xl font-semibold mb-4">Feedback</h2>

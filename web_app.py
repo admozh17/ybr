@@ -1,20 +1,35 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
-from sqlalchemy.orm.attributes import flag_modified
-import os
-from agent import run
-from flask_sqlalchemy import SQLAlchemy
-import requests
-import json
-from datetime import datetime
-from vector_manager import VectorManager
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.middleware.proxy_fix import ProxyFix
-import secrets
-from authlib.integrations.flask_client import OAuth
-from dotenv import load_dotenv
+#!/usr/bin/env python3
+"""Flask web application for video analysis with waterfall pipeline architecture."""
 
-# Load environment variables from .env file
+# ── Core std-lib imports ───────────────────────────────────────
+import asyncio, json, os, pathlib, tempfile, time
+from datetime import datetime
+
+# ── Flask & extensions (IMPORT *BEFORE* using Flask()) ─────────
+from flask import (Flask, flash, jsonify, redirect, render_template,
+                   request, url_for)
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_login import (LoginManager, UserMixin, current_user, login_required,
+                         login_user, logout_user)
+from authlib.integrations.flask_client import OAuth
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy.orm.attributes import flag_modified
+from dotenv import load_dotenv
+import requests
+
+# ── Create app & DB objects ────────────────────────────────────
+app = Flask(__name__)
+app.config.from_object("config.Config")      # adjust as needed
+db  = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# ── Project-specific imports (after db exists) ─────────────────
+from agent import Agent, PipelineStage, ExtractionState
+from extractor import fetch_clip
+from vector_manager import VectorManager
+# Load environment variables
 load_dotenv()
 
 # Initialize Flask app
@@ -37,6 +52,10 @@ login_manager.login_message_category = 'info'
 
 # Initialize vector manager
 vector_manager = VectorManager()
+
+# In-memory cache for active extractions
+active_extractions = {}
+
 
 # Define models
 class User(db.Model, UserMixin):
@@ -84,11 +103,66 @@ class User(db.Model, UserMixin):
 
 
 class Result(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String(500), nullable=False)
-    data = db.Column(db.JSON, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    """Persist one analysis run (video or URL)."""
+
+    __tablename__ = "result"
+
+    # ── Primary + foreign keys ──────────────────────────────────────────────
+    id        = db.Column(db.Integer, primary_key=True)
+    user_id   = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+
+    # ── Core payload ────────────────────────────────────────────────────────
+    url       = db.Column(db.String(500), nullable=False)
+    data      = db.Column(db.JSON,        nullable=False)
+    timestamp = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    # ── Incremental-processing status (added for async waterfall UI) ───────
+    status        = db.Column(db.String(20), default="pending")   # pending / processing / completed / error
+    current_stage = db.Column(db.Integer,    default=0)           # 0-3 (we have 4 stages)
+    progress      = db.Column(db.Float,      default=0.0)         # 0-100 percentage
+
+    # ───────────────────────────────────────────────────────────────────────
+
+    # ---------- Helper methods --------------------------------------------
+    def has_visual_data(self) -> bool:
+        """True if GPT-Vision or other Stage-2 models populated visual data."""
+        return bool(self.data.get("recognition_data"))
+
+    def get_visual_summary(self) -> dict | None:
+        """
+        Return a compact summary of visual-recognition facts
+        (time, frames, models) or None if none exist.
+        """
+        if not self.has_visual_data():
+            return None
+
+        rec = self.data["recognition_data"]
+        return {
+            "processing_time" : rec.get("processing_time", 0),
+            "frames_processed": rec.get("frames_processed", 0),
+            "models_used"     : rec.get("models_used", []),
+        }
+
+    def to_dict(self) -> dict:
+        """Serialize row for JSON responses / status polling."""
+        return {
+            "id"            : self.id,
+            "url"           : self.url,
+            "timestamp"     : self.timestamp.isoformat(),
+            "status"        : self.status,
+            "current_stage" : self.current_stage,
+            "progress"      : self.progress,
+            "data"          : self.data,
+            "user_id"       : self.user_id,
+        }
+
+    # ---------- Representation --------------------------------------------
+    def __repr__(self) -> str:
+        return f"<Result id={self.id} status={self.status} progress={self.progress:.0f}%>"
 
 
 class Album(db.Model):
@@ -108,7 +182,6 @@ def load_user(user_id):
 oauth = OAuth(app)
 
 # Set up Google OAuth
-# Update your Google OAuth configuration with these changes
 google = oauth.register(
     name='google',
     client_id=os.getenv('GOOGLE_OAUTH_CLIENT_ID'),
@@ -188,6 +261,7 @@ def google_photo(photo_ref: str):
         return "Error fetching photo", 500
 
 
+# Album routes - kept the same
 @app.route("/album/create", methods=["POST"])
 @login_required
 def create_album():
@@ -358,45 +432,243 @@ def index():
     return render_template("index.html", previous_results=results)
 
 
+# Update the analyze endpoint to support incremental updates
 @app.route("/analyze", methods=["POST"])
 def analyze():
     url = request.form.get("url")
+    enable_visual = request.form.get("enable_visual", "false").lower() == "true"
+    
     if not url:
         return jsonify({"error": "URL is required", "activities": []})
 
     try:
-        result = run(url)
-        if not result:
-            return jsonify({"error": "No data extracted", "activities": []})
-
-        # Add images to activities
-        for activity in result.get("activities", []):
-            activity["image_url"] = fetch_place_image(
-                activity.get("place_name", ""), activity
-            )
-
-        # Store in database
+        # Create initial result entry
         db_result = Result(
             url=url, 
-            data=result,
-            user_id=current_user.id if current_user.is_authenticated else None
+            data={"url": url, "status": "processing"},
+            user_id=current_user.id if current_user.is_authenticated else None,
+            status="processing",
+            current_stage=0,
+            progress=0.0
         )
         db.session.add(db_result)
         db.session.commit()
         
-        # Now that we have a database ID, add to vector database with the correct ID
-        try:
-            vector_manager.add_result(str(db_result.id), result, url)
-            print(f"✅ Added result {db_result.id} to semantic search index")
-        except Exception as e:
-            print(f"❌ Error adding to search index: {str(e)}")
-
-        return jsonify(result)
-    except Exception as e:
-        app.logger.error(f"Error processing URL {url}: {str(e)}")
-        return jsonify(
-            {"error": f"Failed to process video: {str(e)}", "activities": []}
+        # Create a task ID for this processing job
+        task_id = f"task_{db_result.id}"
+        
+        # Start processing in a separate thread
+        app.logger.info(f"Starting processing task {task_id} for URL {url}")
+        
+        # Run this in a background thread
+        import threading
+        processing_thread = threading.Thread(
+            target=process_video_in_background,
+            args=(url, db_result.id, enable_visual)
         )
+        processing_thread.daemon = True
+        processing_thread.start()
+        
+        # Return immediate response with task ID
+        return jsonify({
+            "id": db_result.id,
+            "url": url,
+            "status": "processing",
+            "task_id": task_id,
+            "message": "Processing started"
+        })
+    except Exception as e:
+        app.logger.error(f"Error starting processing for URL {url}: {str(e)}")
+        return jsonify(
+            {"error": f"Failed to start processing: {str(e)}", "activities": []}
+        )
+
+
+def process_video_in_background(url, result_id, enable_visual):
+    """Process video in a background thread and update the database incrementally."""
+    try:
+        # Get the result from database
+        with app.app_context():
+            db_result = Result.query.get(result_id)
+            if not db_result:
+                app.logger.error(f"Result {result_id} not found")
+                return
+            
+            # Create agent
+            agent = Agent(use_gpu=True)
+            
+            # Create initial state
+            state = ExtractionState()
+            state.url = url
+            state.started_at = time.time()
+            
+            with tempfile.TemporaryDirectory() as tmp:
+                tmp_path = pathlib.Path(tmp)
+                clip_path = tmp_path / "clip.mp4"
+                
+                # Step 1: Download video
+                try:
+                    app.logger.info(f"Downloading video from {url}...")
+                    download_start = time.time()
+                    fetch_clip(url, clip_path)
+                    download_time = time.time() - download_start
+                    state.performance_profile["download_time"] = download_time
+                    
+                    # Store clip path in state
+                    state.clip_path = clip_path
+                    
+                    # Update database with download progress
+                    db_result.data = {"url": url, "status": "processing", "stage": "download_complete"}
+                    db_result.progress = 10.0
+                    db_result.current_stage = 0
+                    db.session.commit()
+                except Exception as e:
+                    app.logger.error(f"Error downloading video: {str(e)}")
+                    db_result.status = "error"
+                    db_result.data = {"error": f"Download error: {str(e)}", "url": url}
+                    db.session.commit()
+                    return
+                
+                # Run each pipeline stage asynchronously
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                # Stage 0: Metadata
+                try:
+                    app.logger.info(f"Running Stage 0: Metadata extraction")
+                    state = loop.run_until_complete(agent.stage0_metadata(state))
+                    
+                    # Update database with stage 0 results
+                    db_result.data = state.to_dict()
+                    db_result.progress = 25.0
+                    db_result.current_stage = 1
+                    db.session.commit()
+                except Exception as e:
+                    app.logger.error(f"Error in Stage 0: {str(e)}")
+                    db_result.status = "error"
+                    db_result.data = {"error": f"Stage 0 error: {str(e)}", "url": url}
+                    db.session.commit()
+                    return
+                
+                # Stage 1: Basic extraction
+                try:
+                    app.logger.info(f"Running Stage 1: Basic extraction")
+                    state = loop.run_until_complete(agent.stage1_basic(state))
+                    
+                    # Update database with stage 1 results
+                    db_result.data = state.to_dict()
+                    db_result.progress = 50.0
+                    db_result.current_stage = 2
+                    db.session.commit()
+                except Exception as e:
+                    app.logger.error(f"Error in Stage 1: {str(e)}")
+                    db_result.status = "error"
+                    db_result.data = state.to_dict()
+                    db_result.data["error"] = f"Stage 1 error: {str(e)}"
+                    db.session.commit()
+                    return
+                
+                # Stage 2: Vision processing
+                try:
+                    app.logger.info(f"Running Stage 2: Vision processing")
+                    state = loop.run_until_complete(agent.stage2_vision(state))
+                    
+                    # Update database with stage 2 results
+                    db_result.data = state.to_dict()
+                    db_result.progress = 75.0
+                    db_result.current_stage = 3
+                    db.session.commit()
+                except Exception as e:
+                    app.logger.error(f"Error in Stage 2: {str(e)}")
+                    db_result.status = "error"
+                    db_result.data = state.to_dict()
+                    db_result.data["error"] = f"Stage 2 error: {str(e)}"
+                    db.session.commit()
+                    return
+                
+                # Stage 3: LLM fusion
+                try:
+                    app.logger.info(f"Running Stage 3: LLM fusion")
+                    state = loop.run_until_complete(agent.stage3_fusion(state))
+                    
+                    # Get final result
+                    result = state.to_dict()
+                    
+                    # Add images to activities
+                    for activity in result.get("activities", []):
+                        activity["image_url"] = fetch_place_image(
+                            activity.get("place_name", ""), activity
+                        )
+                    
+                    # Update database with final results
+                    db_result.data = result
+                    db_result.status = "completed"
+                    db_result.progress = 100.0
+                    db.session.commit()
+                    
+                    # Add to vector database
+                    try:
+                        vector_manager.add_result(str(db_result.id), result, url)
+                        app.logger.info(f"Added result {db_result.id} to semantic search index")
+                    except Exception as e:
+                        app.logger.error(f"Error adding to search index: {str(e)}")
+                        
+                    app.logger.info(f"Processing completed for URL {url}")
+                except Exception as e:
+                    app.logger.error(f"Error in Stage 3: {str(e)}")
+                    db_result.status = "error"
+                    db_result.data = state.to_dict()
+                    db_result.data["error"] = f"Stage 3 error: {str(e)}"
+                    db.session.commit()
+                    return
+    except Exception as e:
+        app.logger.error(f"Critical error in background processing: {str(e)}")
+        with app.app_context():
+            db_result = Result.query.get(result_id)
+            if db_result:
+                db_result.status = "error"
+                db_result.data = {"error": f"Processing error: {str(e)}", "url": url}
+                db.session.commit()
+
+
+# Add an endpoint to check the status of an analysis
+@app.route("/analysis_status/<int:result_id>")
+def analysis_status(result_id):
+    """Get the current status of an analysis."""
+    result = Result.query.get_or_404(result_id)
+    
+    # Check if result is private and user has access
+    if result.user_id and (not current_user.is_authenticated or result.user_id != current_user.id):
+        return jsonify({"error": "You don't have permission to view this result"}), 403
+    
+    response = {
+        "id": result.id,
+        "url": result.url,
+        "status": result.status,
+        "current_stage": result.current_stage,
+        "progress": result.progress
+    }
+    
+    # If completed, include the full result
+    if result.status == "completed":
+        response["data"] = result.data
+    # If error, include the error message
+    elif result.status == "error":
+        response["error"] = result.data.get("error", "Unknown error")
+    # If processing, include partial data if available
+    elif result.status == "processing":
+        # Include stage-specific data
+        response["stage_data"] = {}
+        if result.current_stage >= 1:  # After stage 0
+            response["stage_data"]["caption_text"] = result.data.get("caption_text", "")
+        if result.current_stage >= 2:  # After stage 1
+            response["stage_data"]["speech_text"] = result.data.get("speech_text", "")
+            response["stage_data"]["num_frames"] = result.data.get("num_frames", 0)
+        if result.current_stage >= 3:  # After stage 2
+            response["stage_data"]["frame_text"] = result.data.get("frame_text", "")
+            response["stage_data"]["visual_results"] = result.data.get("visual_results", [])
+    
+    return jsonify(response)
 
 
 @app.route("/gallery")
@@ -523,9 +795,41 @@ def search_api():
         if value := request.args.get(key):
             filters[key] = value
     
+    # New visual filters
+    visual_filters = []
+    if object_filter := request.args.get('object'):
+        visual_filters.append(('detected_objects', 'label', object_filter))
+    if scene_filter := request.args.get('scene'):
+        visual_filters.append(('scene_categories', 'category', scene_filter))
+    
     # Perform search
     try:
         results = vector_manager.search(query, limit=20, filters=filters)
+        
+        # Apply visual filters (post-processing)
+        if visual_filters:
+            filtered_results = []
+            for result in results:
+                result_id = result["id"]
+                db_result = Result.query.get(result_id)
+                if db_result:
+                    # Check if matches visual filters
+                    matches_filters = True
+                    for activity in db_result.data.get("activities", []):
+                        if "visual_data" in activity:
+                            for filter_type, filter_field, filter_value in visual_filters:
+                                found = False
+                                for item in activity["visual_data"].get(filter_type, []):
+                                    if filter_value.lower() in item.get(filter_field, "").lower():
+                                        found = True
+                                        break
+                                if not found:
+                                    matches_filters = False
+                                    break
+                    
+                    if matches_filters:
+                        filtered_results.append(result)
+            results = filtered_results
         
         # Enhance results with additional info
         for result in results:
@@ -543,10 +847,23 @@ def search_api():
                     # Generate image URL if not already present
                     place_name = activities[0].get("place_name", "")
                     result["image_url"] = fetch_place_image(place_name)
+                
+                # Add visual data highlights
+                result["visual_highlights"] = []
+                for activity in activities:
+                    if "visual_data" in activity:
+                        # Add top scenes
+                        for scene in activity["visual_data"].get("scene_categories", [])[:2]:
+                            result["visual_highlights"].append({
+                                "type": "scene",
+                                "label": scene["category"],
+                                "confidence": scene["confidence"]
+                            })
         
         return jsonify({
             "query": query,
             "filters": filters,
+            "visual_filters": [f[2] for f in visual_filters],
             "results": results
         })
     except Exception as e:
@@ -729,7 +1046,6 @@ def google_login():
         print(f"Error in google_login: {str(e)}")
         flash(f"Error initiating Google login: {str(e)}", "danger")
         return redirect(url_for('login'))
-
 
 
 @app.route('/login/google/callback')

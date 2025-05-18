@@ -1,0 +1,415 @@
+{
+  "content_type": "Activity",
+  "activities": [
+    {
+      "place_name": "Kumo",
+      "genre": "restaurant",
+      "cuisine": "Japanese",
+      "vibes": "sleek, elevated casual dining",
+      "activities": [],
+      "availability": {
+        "street_address": "",
+        "city": "Jumeirah",
+        "county": "",
+        "state": "",
+        "country": "United Arab Emirates",
+        "region": ""
+      },
+      "sources": [
+        "captions"
+      ],
+      "ratings_feedback": {
+        "service_feedback": null,
+        "food_feedback": null,
+        "specific_dish_feedback": [],
+        "vibes_feedback": null,
+        "miscellaneous_feedback": null
+      },
+      "dishes": {
+        "explicitly_mentioned": [],
+        "visually_shown": []
+      },
+      "confidence": {
+        "place_name": 0.0,
+        "genre": 0.0,
+        "cuisine": 0.0,
+        "vibes": 0.0,
+        "activities": 0.0,
+        "availability": 0.0,
+        "ratings_feedback": 0.0,
+        "dishes": 0.0
+      },
+      "visual_data": {
+        "detected_objects": [
+          {
+            "label": "person",
+            "confidence": 0.9146613478660583
+          },
+          {
+            "label": "chair",
+            "confidence": 0.8621559739112854
+          },
+          {
+            "label": "cup",
+            "confidence": 0.849038302898407
+          },
+          {
+            "label": "pizza",
+            "confidence": 0.8245692253112793
+          },
+          {
+            "label": "dining table",
+            "confidence": 0.7347179651260376
+          },
+          {
+            "label": "bowl",
+            "confidence": 0.6306644678115845
+          },
+          {
+            "label": "potted plant",
+            "confidence": 0.5124334096908569
+          },
+          {
+            "label": "couch",
+            "confidence": 0.5122752785682678
+          }
+        ],
+        "scene_categories": [],
+        "food_items": [],
+        "activities": []
+      }
+    }
+  ],
+  "speech_text": "",
+  "frame_text": "alee A ot Bed MEL Pst el ord fg VF\na a me\noe ee reas BSN EE NS\nEs <A Sd hy 3 SSE tie No heer ES\nee ee\n| | I 5 i ,~ ! = | =\nfei Kam id A EE ear:\nfae tla: PE amd a ire oe ie ee gS ALE ee\nan) 1 = =\nUe fo Gu lO\nJ ae a ALA DE Ged A Pa J inch\nae ee Wess ees eS | Er) Baer Ea eee\nAMMA dsl VNNNSSSSSN\nGtr dat na\n——s 5 ir 4} a = G ae et Te\nSef ae ORE ree = eee ea eae we\n2g ae Ce A re\nAN Le\nZZ Witinam N I\n——— fis awe Nt\nce AS AR RACA = BG sn\nA Ae\n=) ————Se |\nSoe\nNIANRRIE tees (et PAY. ANN FACETS:\nSp aA UAE Ra TINS\nVie k ee I SS\nYi Pe ASS\n1 iy Ae\nLijpe (a eNSe\n(=|\nHe Alea\nALLE ON\n4 te) We SY Fe\nel are\ntenes, of Mh i LD aN ay VA \\ \\\\ ~\nES (ae zi es S | Sy\nheen i Trl: i do \\A\\ EEE\n= =the | abate\nOE 4d ns ISS\n| )\\oa\nea cia x\n7 i tari mf, ae f : ai SW We 3 oe SK\nZA eG\nSENN ee oe ae ae ee\n2\nSe eee\nSot APE 2\n7 ite AS Cy ES\n| Rsetens ss:\nNF Srte Ss wiser\nWok: Ais eae ee ex a TaN\nEN See eh oe See ae\nSSD Se A\nte NS oxen am aR Feet neh, se 9\n~ ) : Cae — war Rig * 4\n/, » FAR ie a ae 7 Fy, fret ot / o\nA Rp Ree er Ue ay tara\nCON REECE See cee Bore: Bee ed\nA ANS Te aE Soe a ee rat hee\n5 IRRE eh RY OO A ee\nmT ip eo SK 6 Sh LSA:\nKS Red a ph nee / see os -\nBES s Be oF + ORS\npS yy LE: Wa Ve . a\n\nyy SONS feo po Jeo : # Be -\ngyn ND ER OOO ee SE Sy Ben® ow\nWRG on AE ap Cee RUSE\nSIR gt BRE ONE es\nSe RR OR SRI ORT\noC eemen////) aoe\n, earn Bierce eae SESS 1S Z\n2 OS\n\nOe (REN A RRS 7,\n< Sey\nNe I I A / I\nCE Pe MHP SS Se\nee i :\na OTe SA Sy, Wy\nIe SS ARES ee SSS\nyo AS Po ee\nLOT\n; ge iy Wy ly yy ay\ney) LA ef PN ean\nLD if MLO ANAC\nJSUT fleets ans eee CNN\nEINE 2) PENN ASISSS\n2g IRF) fe it Sy RASS\nEe Se ee a\nTip sat fos ge Ase Barb mids Pypreace fos Pe ee A ee Seg\nch ey SS ae aN WL fee EN Rae\neA MIS RAEN\nNh ene Fen bene\nELA \\s ee eet sis\n“A Blea) (ARIES) peo LS\nMg Vea [il fer Ftd Lil. Sa RIA el\n\nYi ef ff 28 RAEN\n\nFSS See ee\n\nLIAL RANE\n\"| ea Gai = = Sey: ea hee! A\nDEALING = SINS\nUL OMIEANENSS aN\nCaN maa Pe:\neee ale\nVa BN i WES S SS) | Res <\nee Dee 8 eS 7\nHe |e\nVee Los",
+  "caption_text": "Housed inside a stunning converted villa on Al Wasl, @kumo.uae marks @independent ‘s first Japanese and elevated casual dining restaurant 👆✨\n\nComplete with sleek interiors, a dedicated matcha bar, open kitchen counter and unbelievably good Japanese fare, this is bound to be your new favourite when it opens soon 🙌 \n\n📍 Kumo, Jumeirah \n✨ Opening soon \n🗞️ Discover @independent founder’s @amalmarri and @deemalbassam exclusive interview in edition two of PAPER by @thehuntrcom — out now 🏃‍♀️\n\n#thehuntr #cityguide #dubaiguide #dubaifood #dubaifoodie #dubaicityguide #mydubai #supportsmall #supportsmallbusinessowners #aesthetic #aesthetics #ａｅｓｔｈｅｔｉｃ #aesthetically #dubaieats #japanesefood #emirati #restaurant #restaurante",
+  "performance_profile": {
+    "download_time": 1.0995368957519531,
+    "extraction_time": 10.300225019454956,
+    "parse_time": 3.3258800506591797,
+    "recognition_time": 4.264686107635498,
+    "geocode_time": 0.0003368854522705078,
+    "total_time": 18.990963220596313
+  },
+  "recognition_data": {
+    "recognition_results": [
+      {
+        "model_type": "yolo_tiny",
+        "confidence": 0.751875595913993,
+        "objects": [
+          {
+            "label": "potted plant",
+            "confidence": 0.5124334096908569,
+            "bbox": [
+              621,
+              599,
+              696,
+              829
+            ]
+          },
+          {
+            "label": "person",
+            "confidence": 0.9146613478660583,
+            "bbox": [
+              178,
+              466,
+              523,
+              1279
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.8621559739112854,
+            "bbox": [
+              614,
+              918,
+              720,
+              1279
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.7524353265762329,
+            "bbox": [
+              516,
+              804,
+              645,
+              1115
+            ]
+          },
+          {
+            "label": "person",
+            "confidence": 0.694729745388031,
+            "bbox": [
+              0,
+              606,
+              58,
+              729
+            ]
+          },
+          {
+            "label": "person",
+            "confidence": 0.5812163352966309,
+            "bbox": [
+              74,
+              611,
+              148,
+              663
+            ]
+          },
+          {
+            "label": "potted plant",
+            "confidence": 0.5691103339195251,
+            "bbox": [
+              576,
+              640,
+              664,
+              744
+            ]
+          },
+          {
+            "label": "person",
+            "confidence": 0.5250240564346313,
+            "bbox": [
+              154,
+              618,
+              199,
+              666
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.6160129308700562,
+            "bbox": [
+              227,
+              778,
+              377,
+              1043
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.8515520095825195,
+            "bbox": [
+              657,
+              701,
+              720,
+              867
+            ]
+          },
+          {
+            "label": "cup",
+            "confidence": 0.849038302898407,
+            "bbox": [
+              139,
+              1066,
+              232,
+              1190
+            ]
+          },
+          {
+            "label": "cup",
+            "confidence": 0.8002017736434937,
+            "bbox": [
+              452,
+              987,
+              529,
+              1078
+            ]
+          },
+          {
+            "label": "couch",
+            "confidence": 0.5122752785682678,
+            "bbox": [
+              1,
+              678,
+              245,
+              1088
+            ]
+          },
+          {
+            "label": "dining table",
+            "confidence": 0.7347179651260376,
+            "bbox": [
+              0,
+              250,
+              717,
+              1280
+            ]
+          },
+          {
+            "label": "cup",
+            "confidence": 0.6020656824111938,
+            "bbox": [
+              375,
+              256,
+              538,
+              457
+            ]
+          },
+          {
+            "label": "cup",
+            "confidence": 0.9374162554740906,
+            "bbox": [
+              378,
+              63,
+              657,
+              401
+            ]
+          },
+          {
+            "label": "pizza",
+            "confidence": 0.8245692253112793,
+            "bbox": [
+              35,
+              452,
+              717,
+              1010
+            ]
+          },
+          {
+            "label": "dining table",
+            "confidence": 0.5894310474395752,
+            "bbox": [
+              0,
+              100,
+              720,
+              1261
+            ]
+          },
+          {
+            "label": "dining table",
+            "confidence": 0.6501463055610657,
+            "bbox": [
+              0,
+              5,
+              718,
+              1258
+            ]
+          },
+          {
+            "label": "bowl",
+            "confidence": 0.6306644678115845,
+            "bbox": [
+              479,
+              451,
+              720,
+              962
+            ]
+          },
+          {
+            "label": "person",
+            "confidence": 0.8329463005065918,
+            "bbox": [
+              301,
+              567,
+              404,
+              757
+            ]
+          },
+          {
+            "label": "person",
+            "confidence": 0.7580972909927368,
+            "bbox": [
+              74,
+              592,
+              205,
+              714
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.8621734380722046,
+            "bbox": [
+              0,
+              817,
+              124,
+              1083
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.8433667421340942,
+            "bbox": [
+              123,
+              815,
+              269,
+              1067
+            ]
+          },
+          {
+            "label": "potted plant",
+            "confidence": 0.7130630016326904,
+            "bbox": [
+              283,
+              669,
+              350,
+              751
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.6019331216812134,
+            "bbox": [
+              654,
+              778,
+              720,
+              1013
+            ]
+          },
+          {
+            "label": "chair",
+            "confidence": 0.5357072949409485,
+            "bbox": [
+              581,
+              750,
+              666,
+              941
+            ]
+          },
+          {
+            "label": "dining table",
+            "confidence": 0.5356964468955994,
+            "bbox": [
+              235,
+              840,
+              499,
+              1091
+            ]
+          },
+          {
+            "label": "potted plant",
+            "confidence": 0.5244220495223999,
+            "bbox": [
+              477,
+              524,
+              618,
+              711
+            ]
+          }
+        ],
+        "scene_categories": [],
+        "food_items": [],
+        "activity_types": [],
+        "processing_time": 2.539257764816284,
+        "frames_processed": 10
+      },
+      {
+        "model_type": "scene_classification",
+        "confidence": 0.0,
+        "objects": [],
+        "scene_categories": [],
+        "food_items": [],
+        "activity_types": [],
+        "processing_time": 1.1587581634521484,
+        "frames_processed": 10
+      }
+    ],
+    "processing_time": 3.6982421875,
+    "frames_processed": 10,
+    "models_used": [
+      "yolo_tiny",
+      "scene_classification"
+    ]
+  }
+}

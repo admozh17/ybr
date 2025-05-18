@@ -1,38 +1,83 @@
-Flask==2.2.3
+###############################################################################
+# Core Web & Auth
+flask==2.2.3
 flask-sqlalchemy==3.0.3
-Werkzeug==2.2.3
-Flask-Login==0.6.2
+flask-login==0.6.2
+werkzeug==2.2.3
+authlib==1.2.0
 python-dotenv==1.0.0
-
-# Authentication
-Authlib==1.2.0
-email-validator==2.0.0
-
-# API and requests
 requests==2.28.2
-googlemaps==4.10.0
-
-# Data processing
+jsonschema==4.4.0
 pydantic==1.10.7
+
+# DB migrations & WSGI
+flask-migrate==3.1.0
+uwsgi==2.0.20
+
+# Async helpers
+aiohttp==3.8.1
+asyncio==3.4.3
+
+###############################################################################
+# Vision / Speech / ML
+opencv-python==4.7.0.72            # GUI builds
+opencv-python-headless==4.7.0.72   # server builds
 numpy==1.24.2
-pandas==1.5.3
-
-# Vision and speech processing
-opencv-python==4.7.0.72
-pytesseract==0.3.10
-pydub==0.25.1
-whisperx==2.3.0
 torch==2.0.0
-
-# Video downloading
-yt-dlp==2023.3.4
-
-# Text processing
+torchvision==0.12.0
+pillow==9.1.0
+pytesseract==0.3.10
+whisperx==2.3.0
+pydub==0.25.1
 tqdm==4.65.0
 
-# AI/ML
-openai==0.27.4
+# CLIP for frame gating
+clip==0.2.0
+ftfy==6.1.1
+regex==2022.3.15
 
-# Vector database
+###############################################################################
+# API clients
+openai==1.0.0
+anthropic==0.3.11
+googlemaps==4.10.0
+
+###############################################################################
+# Micro-services
+fastapi==0.78.0
+uvicorn==0.17.6
+
+###############################################################################
+# Vector DB & semantic search
 qdrant-client==1.1.1
 sentence-transformers==2.2.2
+
+###############################################################################
+# Video handling
+yt-dlp==2023.3.4
+ffmpeg-python==0.2.0
+
+###############################################################################
+# Utilities / misc.
+pandas==1.5.3
+timm==0.5.4
+scikit-learn==1.0.2
+concurrent-log-handler==0.9.20
+python-decouple==3.6
+
+###############################################################################
+# Optional food-specific
+transformers==4.18.0
+
+###############################################################################
+# Prod process managers
+gunicorn==20.1.0
+redis==4.2.2
+celery==5.2.6
+
+###############################################################################
+# Dev / QA
+black==22.3.0
+pylint==2.13.5
+pytest==7.1.1
+pytest-cov==3.0.0

@@ -33,6 +33,11 @@ import time
 
 def extract_audio(video_path: pathlib.Path) -> pathlib.Path:
     """Extract audio from video file."""
+    # If the file is already a wav file, just return it
+    if video_path.suffix.lower() == ".wav":
+        return video_path
+        
+    # Otherwise, extract audio
     audio_path = video_path.with_suffix(".wav")
     subprocess.run(
         [

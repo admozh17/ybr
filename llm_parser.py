@@ -291,9 +291,14 @@ def ensure_required_fields(data):
     return data
 
 
-def parse_place_info(text: str) -> Compilation:
+def parse_place_info(text: str) -> Dict:
+    """
+    Parse place information from text and return as a dictionary.
+    This is a modified version that returns a regular dictionary instead of a Pydantic model.
+    """
     import openai
     import json
+    import os
 
     client = openai.OpenAI()
 
@@ -314,7 +319,7 @@ def parse_place_info(text: str) -> Compilation:
     except json.JSONDecodeError:
         print("❌ Failed to parse JSON from LLM output:")
         print("Raw content:\n", resp.choices[0].message.content)
-        raise ValueError("Input string to parse_place_info is not valid JSON")
+        data = {"content_type": "Error", "activities": []}
 
     # Normalize keys to lowercase
     data = normalize_keys(data)
@@ -326,9 +331,5 @@ def parse_place_info(text: str) -> Compilation:
     print("Normalized data structure before model validation:")
     print(json.dumps(data, indent=2))
 
-    try:
-        return Compilation(**data)
-    except Exception as e:
-        print(f"Error creating Compilation model: {e}")
-        # Attempt to create a minimal valid Compilation
-        return Compilation(content_type="Error", activities=[])
+    # Return dictionary directly instead of creating Pydantic model
+    return data
