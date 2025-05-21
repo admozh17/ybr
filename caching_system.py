@@ -87,6 +87,8 @@ class VideoCachingSystem:
         conn.commit()
         conn.close()
     
+
+    
     def _normalize_url(self, url: str) -> str:
         """
         Normalize URL for more consistent caching.
@@ -99,12 +101,15 @@ class VideoCachingSystem:
         """
         import re
         
+        # Debug
+        print(f"🔍 Normalizing URL: {url}")
+        
         # For Instagram Posts/Reels, normalize to a standard format
         instagram_match = re.search(r'instagram\.com/(?:p|reel)/([^/?]+)', url)
         if instagram_match:
             post_id = instagram_match.group(1)
             normalized = f"https://www.instagram.com/p/{post_id}/"
-            print(f"📋 Normalized Instagram URL from {url} to {normalized}")
+            print(f"📋 Normalized Instagram URL: {normalized}")
             return normalized
         
         # For TikTok, extract just the video ID
@@ -122,42 +127,6 @@ class VideoCachingSystem:
         # For all other URLs, return as is
         return url
     
-    def _normalize_place_name(self, place_name: str) -> str:
-        """
-        Normalize place name for more effective matching.
-        Removes common prefixes/suffixes and converts to lowercase.
-        
-        Args:
-            place_name: Original place name
-            
-        Returns:
-            Normalized place name for lookup
-        """
-        if not place_name:
-            return ""
-        
-        # Convert to lowercase
-        normalized = place_name.lower()
-        
-        # Remove common prefixes
-        prefixes = ["the ", "hotel ", "restaurant ", "cafe ", "bar "]
-        for prefix in prefixes:
-            if normalized.startswith(prefix):
-                normalized = normalized[len(prefix):]
-        
-        # Remove common suffixes
-        suffixes = [" restaurant", " cafe", " bar", " hotel", " bistro"]
-        for suffix in suffixes:
-            if normalized.endswith(suffix):
-                normalized = normalized[:-len(suffix)]
-                
-        # Remove special characters and extra spaces
-        import re
-        normalized = re.sub(r'[^\w\s]', '', normalized)  # Remove special characters
-        normalized = re.sub(r'\s+', ' ', normalized).strip()  # Remove extra spaces
-        
-        return normalized
-    
     def _hash_url(self, url: str) -> str:
         """
         Create a hash of the URL for faster lookups.
@@ -169,7 +138,28 @@ class VideoCachingSystem:
             SHA-256 hash of the normalized URL
         """
         normalized_url = self._normalize_url(url)
-        return hashlib.sha256(normalized_url.encode()).hexdigest()
+        url_hash = hashlib.sha256(normalized_url.encode()).hexdigest()
+        # Add debug print
+        print(f"🔑 Generated hash: {url_hash} for normalized URL: {normalized_url}")
+        return url_hash
+    def _normalize_place_name(self, name: str) -> str:
+        """
+        Normalize a place name to a lowercase, underscore-separated key.
+
+        Args:
+            name: The place name
+
+        Returns:
+            Normalized place name string
+        """
+        return (
+            name.strip()
+                .lower()
+                .replace(" ", "_")
+                .replace("-", "_")
+                .replace("’", "")
+                .replace("'", "")
+        )
     
     def get_cached_video_result(self, url: str) -> Optional[Dict[str, Any]]:
         """
@@ -236,6 +226,9 @@ class VideoCachingSystem:
         normalized_url = self._normalize_url(url)
         url_hash = self._hash_url(url)  # This now uses normalized_url internally
         
+        # Add debug print statements
+        print(f"Storing with URL hash: {url_hash} for normalized URL: {normalized_url}")
+        
         # Update the result with the normalized URL
         if "url" in result:
             result["url"] = normalized_url
@@ -250,6 +243,9 @@ class VideoCachingSystem:
             (url, url_hash, result_json, created_at, last_accessed) 
             VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ''', (normalized_url, url_hash, json.dumps(result)))
+            
+            # Add debug success message
+            print(f"✅ Stored result in cache for hash: {url_hash}")
             
             # Extract places from activities for place cache
             if "activities" in result:

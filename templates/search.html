@@ -1,8 +1,3 @@
-# Search Page Template
-
-Create a new template file at `templates/search.html`:
-
-```html
 {% extends "base.html" %}
 
 {% block content %}
@@ -67,7 +62,9 @@ Create a new template file at `templates/search.html`:
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('search-input');
@@ -95,9 +92,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Search on button click
     searchButton.addEventListener('click', performSearch);
     
-    function performSearch() {
-        const query = searchInput.value.trim();
+    function performSearch(initialQuery) {
+        // Use provided query or get it from the input field
+        const query = initialQuery || searchInput.value.trim();
         if (!query) return;
+        
+        // Make sure the search input shows the current query
+        searchInput.value = query;
         
         // Show loading
         resultsContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"></div><p class="mt-2">Searching...</p></div>';
@@ -175,7 +176,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return colors[genre] || 'secondary';
     }
+    
+    // Check URL parameters on page load
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryParam = urlParams.get('q');
+    
+    // If there's a query parameter, perform the search automatically
+    if (queryParam) {
+        performSearch(queryParam);
+    }
 });
 </script>
 {% endblock %}
-```

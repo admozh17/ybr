@@ -19,6 +19,8 @@ from sqlalchemy.orm.attributes import flag_modified
 from dotenv import load_dotenv
 import requests
 from flask import abort  # Add at top if not already imported
+from cache_adapter import check_cache_health
+
 
 # ── Create app & DB objects ────────────────────────────────────
 app = Flask(__name__)
@@ -55,6 +57,11 @@ login_manager.login_message_category = 'info'
 
 # Initialize vector manager
 vector_manager = VectorManager()
+
+# Run cache health check on startup
+print("\n=== Running Cache Health Check on Startup ===")
+check_cache_health()
+print("=== Cache Health Check Complete ===\n")
 
 # In-memory cache for active extractions
 active_extractions = {}
@@ -301,7 +308,27 @@ def add_to_album(album_id):
 
     db.session.commit()
     return jsonify({"success": True})
-
+@app.route("/albums_view")
+def albums_view():
+    """Render albums view page"""
+    try:
+        # Get all public albums
+        albums = Album.query.filter_by(user_id=None).order_by(Album.timestamp.desc()).all()
+        
+        # If user is authenticated, include their private albums
+        if current_user.is_authenticated:
+            user_albums = Album.query.filter_by(user_id=current_user.id).order_by(Album.timestamp.desc()).all()
+            # Combine lists (user's albums first)
+            all_albums = user_albums + [a for a in albums if a not in user_albums]
+        else:
+            all_albums = albums
+            
+    except Exception as e:
+        print(f"Warning: {e}")
+        # Fall back to all albums
+        all_albums = Album.query.order_by(Album.timestamp.desc()).all()
+    
+    return render_template("albums.html", albums=all_albums)
 
 @app.route("/albums")
 def get_albums():
@@ -608,22 +635,29 @@ def process_video_in_background(url, result_id, enable_visual):
             # Handle cache hits immediately
             if result.get("_cache", {}).get("cache_hit", False):
                 app.logger.info(f"🎯 Using cached result for URL: {url}")
-                
-                # Update database with cached result
+
+                # Add image URLs to cached result
+                for activity in result.get("activities", []):
+                    activity["image_url"] = fetch_place_image(
+                        activity.get("place_name", ""), activity
+                    )
+
+                # Update database with enriched cached result
                 db_result.data = result
                 db_result.status = "completed"
                 db_result.progress = 100.0
                 db_result.current_stage = 3
                 db.session.commit()
-                
+
                 # Add to vector database if not already there
                 try:
                     vector_manager.update_result(str(db_result.id), result, url)
                     app.logger.info(f"Updated vector index for cached result {db_result.id}")
                 except Exception as e:
                     app.logger.error(f"Error updating search index: {str(e)}")
-                
+
                 return
+
             
             # For cache misses, or after processing, continue with normal updates
             # Add images to activities
