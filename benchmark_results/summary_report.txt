@@ -1,0 +1,23 @@
+===== ASR BENCHMARK SUMMARY =====
+
+Video URL: https://www.instagram.com/reel/DIe0l2Cvtrm/?igsh=MWNzamdydWR0bHB0bg
+Date: 2025-05-18_22-27-00
+Runs: 2
+Segment Length: 5.0s
+
+===== PERFORMANCE COMPARISON =====
+
+Forced Segmented:
+  Average Time: 77.58 seconds
+  Range: 76.63s - 78.54s
+  Average Transcript Length: 2159.0 characters
+
+Adaptive:
+  Average Time: 30.06 seconds
+  Range: 28.52s - 31.60s
+  Average Transcript Length: 2186.0 characters
+
+Transcript Similarity: 0.6647
+
+Speedup: 0.39x
+Adaptive approach is 2.58x faster than Forced Segmented approach

@@ -1,0 +1,37 @@
+{
+  "video_url": "https://www.instagram.com/reel/DIe0l2Cvtrm/?igsh=MWNzamdydWR0bHB0bg",
+  "timestamp": "2025-05-18_22-27-00",
+  "num_runs": 2,
+  "segment_length": 5.0,
+  "methods": {
+    "segmented_forced": {
+      "times": [
+        78.53546595573425,
+        76.62772679328918
+      ],
+      "transcript_lengths": [
+        2159,
+        2159
+      ],
+      "avg_time": 77.58159637451172,
+      "min_time": 76.62772679328918,
+      "max_time": 78.53546595573425,
+      "avg_length": 2159.0
+    },
+    "adaptive": {
+      "times": [
+        31.59659481048584,
+        28.515562057495117
+      ],
+      "transcript_lengths": [
+        2186,
+        2186
+      ],
+      "avg_time": 30.05607843399048,
+      "min_time": 28.515562057495117,
+      "max_time": 31.59659481048584,
+      "avg_length": 2186.0
+    }
+  },
+  "transcript_similarity": 0.6646720368239356
+}

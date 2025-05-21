@@ -17,6 +17,8 @@ import io
 from typing import Dict, Any, List, Tuple, Optional, Set
 from functools import partial
 from PIL import Image
+import multiprocessing
+
 
 # ── Core extraction utilities ───────────────────────────────────────────
 from extractor import (
@@ -26,6 +28,7 @@ from extractor import (
     detect_speech_segments,
     ocr_frames,
     geocode_place,
+    adaptive_whisper_transcribe
 )
 
 # parallel OCR helper now lives in its own file
@@ -48,6 +51,8 @@ from enum import Enum
 
 # Import OpenAI for GPT-Vision analysis
 import openai
+
+
 
 
 # Constants and environment configuration
@@ -120,6 +125,14 @@ class Agent:
     
     def __init__(self, use_gpu: bool = True):
         """Initialize the agent."""
+        # Set multiprocessing start method in case this is the main process
+        if multiprocessing.current_process().name == 'MainProcess':
+            try:
+                multiprocessing.set_start_method('spawn', force=True)
+                print("Set multiprocessing start method to 'spawn'")
+            except RuntimeError:
+                print("Could not set start method to 'spawn' (likely already set)")
+                
         self.use_gpu = use_gpu and torch.cuda.is_available()
         self.device = torch.device("cuda" if self.use_gpu else "cpu")
         self.clip_gate = ClipGate(device=str(self.device))
@@ -350,52 +363,56 @@ class Agent:
         # Call GPT Vision with food-specific prompt
         return await self._analyze_with_gpt_vision(frames, food_prompt)
     
-    async def stage0_metadata(self, state: ExtractionState) -> ExtractionState:
-        """Stage 0: Extract metadata (caption, etc.)."""
-        stage_start = time.time()
-        print("🚀 Starting Stage 0: Metadata extraction")
-        
-        try:
-            # Fetch caption/description
-            caption_start = time.time()
-            state.caption_text = fetch_caption(state.url)
-            state.performance_profile["caption_time"] = time.time() - caption_start
-            print(f"📝 Caption: {state.caption_text[:100]}..." if len(state.caption_text) > 100 else state.caption_text)
-            
-            # Extract initial entities from caption
-            if state.caption_text:
-                state.entities = self._extract_entities_regex(state.caption_text)
-                print(f"🔍 Extracted entities: {', '.join(state.entities)}")
-            
-            # Mark stage as completed
-            state.completed_stages.add(PipelineStage.STAGE_0_METADATA)
-            state.current_stage = PipelineStage.STAGE_1_BASIC
-            state.performance_profile["stage0_time"] = time.time() - stage_start
-            
-            return state
-        except Exception as e:
-            print(f"❌ Error in Stage 0: {e}")
-            state.error = f"Stage 0 error: {str(e)}"
-            return state
     
+    
+    async def stage0_metadata(self, state: ExtractionState) -> ExtractionState:
+            """Stage 0: Extract metadata (caption, etc.)."""
+            stage_start = time.time()
+            print("🚀 Starting Stage 0: Metadata extraction")
+            
+            try:
+                # Fetch caption/description
+                caption_start = time.time()
+                state.caption_text = fetch_caption(state.url)
+                state.performance_profile["caption_time"] = time.time() - caption_start
+                print(f"📝 Caption: {state.caption_text[:100]}..." if len(state.caption_text) > 100 else state.caption_text)
+                
+                # Extract initial entities from caption
+                if state.caption_text:
+                    state.entities = self._extract_entities_regex(state.caption_text)
+                    print(f"🔍 Extracted entities: {', '.join(state.entities)}")
+                
+                # Mark stage as completed
+                state.completed_stages.add(PipelineStage.STAGE_0_METADATA)
+                state.current_stage = PipelineStage.STAGE_1_BASIC
+                state.performance_profile["stage0_time"] = time.time() - stage_start
+                
+                return state
+            except Exception as e:
+                print(f"❌ Error in Stage 0: {e}")
+                state.error = f"Stage 0 error: {str(e)}"
+                return state
+        
     async def stage1_basic(self, state: ExtractionState) -> ExtractionState:
         """Stage 1: VAD-sharded Whisper + regex NER + CLIP gate."""
         stage_start = time.time()
         print("🚀 Starting Stage 1: Basic extraction")
         
         try:
-            # Extract audio and detect speech segments
+            # Extract audio
             audio_path = extract_audio(state.clip_path)
-            segments_start = time.time()
-            speech_segments = detect_speech_segments(audio_path)
-            state.performance_profile["vad_time"] = time.time() - segments_start
             
-            # MODIFIED: Skip actual transcription since we're having import issues
+            # Use standard whisper transcription - avoid parallel ASR which may be causing issues
             asr_start = time.time()
-            state.speech_text = whisper_transcribe_segments(audio_path)
+            print("🎤 Transcribing audio with standard whisper (non-parallel)...")
+            
+            # Use simpler adaptive transcribe function directly
+            state.speech_text = adaptive_whisper_transcribe(state.clip_path)
             state.performance_profile["asr_time"] = time.time() - asr_start
             
-            # Rest of the method remains the same
+            print(f"📝 Transcription result: {state.speech_text[:100]}..." if len(state.speech_text) > 100 else state.speech_text)
+            
+            # Extract entities from speech
             speech_entities = self._extract_entities_regex(state.speech_text)
             state.entities.extend([e for e in speech_entities if e not in state.entities])
             if len(state.entities) > 10:  # Limit to top 10
@@ -441,7 +458,6 @@ class Agent:
             traceback.print_exc()
             state.error = f"Stage 1 error: {str(e)}"
             return state
-    
     async def stage2_vision(self, state: ExtractionState) -> ExtractionState:
         """Stage 2: GPT-Vision analysis on gated frames + food analysis."""
         stage_start = time.time()
@@ -469,58 +485,158 @@ class Agent:
                 state.performance_profile["ocr_time"] = time.time() - ocr_start
                 print(f"📝 OCR text: {state.frame_text[:100]}..." if len(state.frame_text) > 100 else state.frame_text)
                 
-                # Analyze frames with GPT Vision
-                vision_start = time.time()
-                vision_analysis = await self._analyze_with_gpt_vision(state.gated_frames)
-                
-                # Check if this is food-related content
-                food_related = False
-                if vision_analysis.get("place_type", "").lower() in ["restaurant", "cafe", "bakery", "food truck", "dining"]:
-                    food_related = True
-                elif "food_items" in vision_analysis and vision_analysis["food_items"]:
-                    food_related = True
-                
-                # If food-related, do additional food-specific analysis
-                food_analysis = None
-                if food_related:
-                    print("🍔 Detected food-related content, running specialized food analysis")
-                    food_analysis = await self._analyze_food_specific(state.gated_frames)
+                # Check if we already have parsed_info from Stage 1 with multiple activities
+                # This would happen if caption/speech text already revealed multiple places
+                if state.parsed_info and "activities" in state.parsed_info and len(state.parsed_info["activities"]) > 1:
+                    print(f"🔍 Detected compilation with {len(state.parsed_info['activities'])} activities")
                     
-                # Store the results
-                visual_results = [{
-                    "model_type": "gpt_vision",
-                    "confidence": 0.9,
-                    "analysis": vision_analysis,
-                    "processing_time": vision_analysis.get("processing_time", 0),
-                    "frames_processed": vision_analysis.get("frames_analyzed", 0)
-                }]
-                
-                if food_analysis:
-                    visual_results.append({
-                        "model_type": "food_analysis",
+                    # Store vision results for each activity
+                    state.visual_results = []
+                    
+                    # Process each activity separately
+                    for i, activity in enumerate(state.parsed_info["activities"]):
+                        # For each activity, ideally we would have specific frames
+                        # If we don't have a way to associate frames with activities yet, 
+                        # we can divide frames evenly or use all frames for each
+                        activity_frames = state.gated_frames  # For now, use all frames for each activity
+                        
+                        # Get place-specific entities for CLIP filtering
+                        place_entities = [activity.get("place_name", "")]
+                        if "genre" in activity and activity["genre"]:
+                            place_entities.append(activity["genre"])
+                        if "cuisine" in activity and activity["cuisine"]:
+                            place_entities.append(activity["cuisine"])
+                        
+                        # Filter frames specific to this activity using CLIP if we have entities
+                        if place_entities and len(state.gated_frames) > 5:
+                            try:
+                                gate_result = self.clip_gate.filter_frames(
+                                    state.gated_frames, 
+                                    place_entities, 
+                                    threshold=0.15,  # Lower threshold for better recall
+                                    max_frames=3  # Fewer frames per activity
+                                )
+                                activity_frames = [state.gated_frames[i] for i in gate_result["kept_frame_indices"]]
+                                print(f"🔍 Activity {i+1}: CLIP gate selected {len(activity_frames)}/{len(state.gated_frames)} frames")
+                            except Exception as e:
+                                print(f"⚠️ Error in CLIP gating for activity {i+1}: {e}")
+                        
+                        # If no frames were selected or CLIP failed, use a subset of frames
+                        if not activity_frames:
+                            # Use frames based on activity index in a compilation
+                            frame_count = len(state.gated_frames)
+                            start_idx = (i * frame_count) // len(state.parsed_info["activities"])
+                            end_idx = ((i + 1) * frame_count) // len(state.parsed_info["activities"])
+                            activity_frames = state.gated_frames[start_idx:end_idx]
+                            if not activity_frames:
+                                activity_frames = [state.gated_frames[0]]  # Fallback to first frame
+                        
+                        # Create custom prompt for this specific activity
+                        custom_prompt = f"""
+                        Analyze these frames for a video showing {activity.get('place_name', 'a place')} 
+                        which is a {activity.get('genre', 'place')}
+                        {f"with {activity.get('cuisine', '')} cuisine" if activity.get('cuisine') else ''}.
+                        
+                        Provide the following information in JSON format:
+                        1. What specific objects related to this {activity.get('genre', 'place')} are visible?
+                        2. What is the overall scene or setting?
+                        3. Any specific activities happening?
+                        
+                        Format as a JSON with these keys:
+                        {{
+                            "objects": ["list", "of", "objects"],
+                            "scene": "Description of scene/setting",
+                            "activities": ["list", "of", "activities"]
+                        }}
+                        
+                        {"Additionally, analyze the food items visible:" if activity.get('genre') in ['restaurant', 'cafe', 'bakery', 'food'] else ""}
+                        {"{ 'food_items': [ {'name': 'dish name', 'description': 'brief description'} ] }" if activity.get('genre') in ['restaurant', 'cafe', 'bakery', 'food'] else ""}
+                        """
+                        
+                        # Analyze frames with GPT Vision for this activity
+                        vision_analysis = await self._analyze_with_gpt_vision(activity_frames, custom_prompt)
+                        
+                        # Add the result to visual_results
+                        state.visual_results.append({
+                            "model_type": "gpt_vision",
+                            "activity_index": i,
+                            "place_name": activity.get("place_name", ""),
+                            "confidence": 0.9,
+                            "analysis": vision_analysis,
+                            "processing_time": vision_analysis.get("processing_time", 0),
+                            "frames_processed": len(activity_frames)
+                        })
+                        
+                        # If food-related, do additional food-specific analysis
+                        if activity.get('genre') in ['restaurant', 'cafe', 'bakery', 'food']:
+                            food_analysis = await self._analyze_food_specific(activity_frames)
+                            
+                            # Add the food result
+                            state.visual_results.append({
+                                "model_type": "food_analysis",
+                                "activity_index": i,
+                                "place_name": activity.get("place_name", ""),
+                                "confidence": 0.9,
+                                "analysis": food_analysis,
+                                "processing_time": food_analysis.get("processing_time", 0),
+                                "frames_processed": len(activity_frames)
+                            })
+                else:
+                    # Single activity case - run standard analysis
+                    vision_start = time.time()
+                    vision_analysis = await self._analyze_with_gpt_vision(state.gated_frames)
+                    
+                    # Check if this is food-related content
+                    food_related = False
+                    if vision_analysis.get("place_type", "").lower() in ["restaurant", "cafe", "bakery", "food truck", "dining"]:
+                        food_related = True
+                    elif "food_items" in vision_analysis and vision_analysis["food_items"]:
+                        food_related = True
+                    
+                    # If food-related, do additional food-specific analysis
+                    food_analysis = None
+                    if food_related:
+                        print("🍔 Detected food-related content, running specialized food analysis")
+                        food_analysis = await self._analyze_food_specific(state.gated_frames)
+                        
+                    # Store the results
+                    visual_results = [{
+                        "model_type": "gpt_vision",
+                        "activity_index": 0,  # Single activity
                         "confidence": 0.9,
-                        "analysis": food_analysis,
-                        "processing_time": food_analysis.get("processing_time", 0),
-                        "frames_processed": food_analysis.get("frames_analyzed", 0)
-                    })
-                
-                state.visual_results = visual_results
-                state.performance_profile["vision_time"] = time.time() - vision_start
+                        "analysis": vision_analysis,
+                        "processing_time": vision_analysis.get("processing_time", 0),
+                        "frames_processed": vision_analysis.get("frames_analyzed", 0)
+                    }]
+                    
+                    if food_analysis:
+                        visual_results.append({
+                            "model_type": "food_analysis",
+                            "activity_index": 0,  # Single activity
+                            "confidence": 0.9,
+                            "analysis": food_analysis,
+                            "processing_time": food_analysis.get("processing_time", 0),
+                            "frames_processed": food_analysis.get("frames_analyzed", 0)
+                        })
+                    
+                    state.visual_results = visual_results
+                    state.performance_profile["vision_time"] = time.time() - vision_start
                 
                 # Log vision results
                 for result in state.visual_results:
                     model_type = result.get("model_type", "unknown")
+                    activity_index = result.get("activity_index", 0)
                     analysis = result.get("analysis", {})
                     if model_type == "gpt_vision":
                         place_type = analysis.get("place_type", "unknown")
                         objects = analysis.get("objects", [])[:5]
-                        print(f"🔍 GPT Vision detected place type: {place_type}")
+                        print(f"🔍 Activity {activity_index+1}: GPT Vision detected place type: {place_type}")
                         if objects:
-                            print(f"🔍 GPT Vision detected objects: {', '.join(objects[:5])}")
+                            print(f"🔍 Activity {activity_index+1}: GPT Vision detected objects: {', '.join(objects[:5])}")
                     elif model_type == "food_analysis":
                         dishes = [dish.get("name", "unknown") for dish in analysis.get("dishes", [])]
                         if dishes:
-                            print(f"🍔 Food analysis detected dishes: {', '.join(dishes)}")
+                            print(f"🍔 Activity {activity_index+1}: Food analysis detected dishes: {', '.join(dishes)}")
             
             # Mark stage as completed
             state.completed_stages.add(PipelineStage.STAGE_2_VISION)
@@ -556,56 +672,58 @@ class Agent:
             for result in state.visual_results:
                 model_type = result.get("model_type", "unknown")
                 analysis = result.get("analysis", {})
+                activity_idx = result.get("activity_index", 0)
+                activity_prefix = f"ACTIVITY {activity_idx+1}: " if "activity_index" in result else ""
                 
                 if model_type == "gpt_vision":
                     # Add place type
                     if "place_type" in analysis:
-                        visual_text.append(f"PLACE TYPE: {analysis['place_type']}")
+                        visual_text.append(f"{activity_prefix}PLACE TYPE: {analysis['place_type']}")
                     
                     # Add objects
                     if "objects" in analysis and analysis["objects"]:
                         objects_text = ", ".join(analysis["objects"])
-                        visual_text.append(f"DETECTED OBJECTS: {objects_text}")
+                        visual_text.append(f"{activity_prefix}DETECTED OBJECTS: {objects_text}")
                     
                     # Add scene
                     if "scene" in analysis:
-                        visual_text.append(f"SCENE: {analysis['scene']}")
+                        visual_text.append(f"{activity_prefix}SCENE: {analysis['scene']}")
                     
                     # Add activities
                     if "activities" in analysis and analysis["activities"]:
                         activities_text = ", ".join(analysis["activities"])
-                        visual_text.append(f"ACTIVITIES: {activities_text}")
+                        visual_text.append(f"{activity_prefix}ACTIVITIES: {activities_text}")
                     
                     # Add food items
                     if "food_items" in analysis and analysis["food_items"]:
                         food_items = [item.get("name", "") for item in analysis["food_items"]]
                         food_text = ", ".join(food_items)
-                        visual_text.append(f"FOOD ITEMS: {food_text}")
+                        visual_text.append(f"{activity_prefix}FOOD ITEMS: {food_text}")
                 
                 elif model_type == "food_analysis":
                     # Add cuisine type
                     if "cuisine_type" in analysis:
-                        visual_text.append(f"CUISINE TYPE: {analysis['cuisine_type']}")
+                        visual_text.append(f"{activity_prefix}CUISINE TYPE: {analysis['cuisine_type']}")
                     
                     # Add dishes
                     if "dishes" in analysis and analysis["dishes"]:
                         dishes = [f"{dish.get('name', '')} ({dish.get('estimated_price_range', '')})" 
                                 for dish in analysis["dishes"]]
                         dishes_text = ", ".join(dishes)
-                        visual_text.append(f"DISHES: {dishes_text}")
+                        visual_text.append(f"{activity_prefix}DISHES: {dishes_text}")
                     
                     # Add ingredients
                     if "ingredients" in analysis and analysis["ingredients"]:
                         ingredients_text = ", ".join(analysis["ingredients"])
-                        visual_text.append(f"INGREDIENTS: {ingredients_text}")
+                        visual_text.append(f"{activity_prefix}INGREDIENTS: {ingredients_text}")
                     
                     # Add restaurant setting
                     if "restaurant_setting" in analysis:
-                        visual_text.append(f"RESTAURANT SETTING: {analysis['restaurant_setting']}")
+                        visual_text.append(f"{activity_prefix}RESTAURANT SETTING: {analysis['restaurant_setting']}")
                     
                     # Add meal type
                     if "meal_type" in analysis:
-                        visual_text.append(f"MEAL TYPE: {analysis['meal_type']}")
+                        visual_text.append(f"{activity_prefix}MEAL TYPE: {analysis['meal_type']}")
             
             if visual_text:
                 fused_text += "\n\nVISUAL ANALYSIS:\n" + "\n".join(visual_text)
@@ -628,11 +746,19 @@ class Agent:
             
             # Enhance with visual data for each activity
             if state.visual_results and "activities" in state.parsed_info:
-                # Create visual data structure for activities
-                gpt_vision_result = next((r for r in state.visual_results if r["model_type"] == "gpt_vision"), None)
-                food_analysis_result = next((r for r in state.visual_results if r["model_type"] == "food_analysis"), None)
+                # Group visual results by activity_index
+                activity_visual_results = {}
+                for result in state.visual_results:
+                    activity_idx = result.get("activity_index", 0)
+                    if activity_idx not in activity_visual_results:
+                        activity_visual_results[activity_idx] = []
+                    activity_visual_results[activity_idx].append(result)
                 
-                for activity in state.parsed_info["activities"]:
+                # Process each activity
+                for idx, activity in enumerate(state.parsed_info["activities"]):
+                    # Get visual results for this activity
+                    activity_results = activity_visual_results.get(idx, [])
+                    
                     # Initialize visual_data if it doesn't exist
                     if "visual_data" not in activity:
                         activity["visual_data"] = {
@@ -641,62 +767,79 @@ class Agent:
                             "food_items": []
                         }
                     
-                    # Add GPT Vision data
-                    if gpt_vision_result:
-                        analysis = gpt_vision_result["analysis"]
+                    # Add visual data from each result for this activity
+                    for result in activity_results:
+                        model_type = result.get("model_type", "")
+                        analysis = result.get("analysis", {})
                         
-                        # Add objects
-                        for obj in analysis.get("objects", []):
-                            activity["visual_data"]["detected_objects"].append({
-                                "label": obj,
-                                "confidence": 0.9
-                            })
-                        
-                        # Add scene categories
-                        if "scene" in analysis:
-                            activity["visual_data"]["scene_categories"].append({
-                                "category": analysis["scene"],
-                                "confidence": 0.9
-                            })
-                        
-                        # Add food items
-                        for food in analysis.get("food_items", []):
-                            activity["visual_data"]["food_items"].append({
-                                "name": food.get("name", "Unknown food"),
-                                "confidence": 0.9,
-                                "description": food.get("description", "")
-                            })
-                    
-                    # Add food analysis data
-                    if food_analysis_result and activity.get("genre") in ["restaurant", "cafe", "bakery"]:
-                        analysis = food_analysis_result["analysis"]
-                        
-                        # Add cuisine type to genre if not already specified
-                        if "cuisine_type" in analysis and not activity.get("cuisine"):
-                            activity["cuisine"] = analysis["cuisine_type"]
-                        
-                        # Add dishes
-                        for dish in analysis.get("dishes", []):
-                            found = False
-                            for existing in activity["visual_data"]["food_items"]:
-                                if dish.get("name", "").lower() in existing["name"].lower():
-                                    # Update existing entry
-                                    existing["description"] = dish.get("description", "")
-                                    existing["price_range"] = dish.get("estimated_price_range", "")
-                                    found = True
-                                    break
+                        if model_type == "gpt_vision":
+                            # Add objects
+                            for obj in analysis.get("objects", []):
+                                activity["visual_data"]["detected_objects"].append({
+                                    "label": obj,
+                                    "confidence": 0.9
+                                })
                             
-                            if not found:
+                            # Add scene categories
+                            if "scene" in analysis:
+                                activity["visual_data"]["scene_categories"].append({
+                                    "category": analysis["scene"],
+                                    "confidence": 0.9
+                                })
+                            
+                            # Add place type if available and place_name isn't set
+                            if "place_type" in analysis and not activity.get("place_name"):
+                                activity["place_name"] = analysis["place_type"]
+                            
+                            # Add food items
+                            for food in analysis.get("food_items", []):
                                 activity["visual_data"]["food_items"].append({
-                                    "name": dish.get("name", "Unknown dish"),
+                                    "name": food.get("name", "Unknown food"),
                                     "confidence": 0.9,
-                                    "description": dish.get("description", ""),
-                                    "price_range": dish.get("estimated_price_range", "")
+                                    "description": food.get("description", "")
                                 })
                         
-                        # Add restaurant setting to vibes if not already specified
-                        if "restaurant_setting" in analysis and not activity.get("vibes"):
-                            activity["vibes"] = analysis["restaurant_setting"]
+                        elif model_type == "food_analysis":
+                            analysis = result.get("analysis", {})
+                            
+                            # Add cuisine type to genre if not already specified
+                            if "cuisine_type" in analysis and not activity.get("cuisine"):
+                                activity["cuisine"] = analysis["cuisine_type"]
+                            
+                            # Add dishes to food items
+                            for dish in analysis.get("dishes", []):
+                                found = False
+                                for existing in activity["visual_data"]["food_items"]:
+                                    if dish.get("name", "").lower() in existing["name"].lower():
+                                        # Update existing entry
+                                        existing["description"] = dish.get("description", "")
+                                        existing["price_range"] = dish.get("estimated_price_range", "")
+                                        found = True
+                                        break
+                                
+                                if not found:
+                                    activity["visual_data"]["food_items"].append({
+                                        "name": dish.get("name", "Unknown dish"),
+                                        "confidence": 0.9,
+                                        "description": dish.get("description", ""),
+                                        "price_range": dish.get("estimated_price_range", "")
+                                    })
+                            
+                            # Add restaurant setting to vibes if not already specified
+                            if "restaurant_setting" in analysis and not activity.get("vibes"):
+                                activity["vibes"] = analysis["restaurant_setting"]
+                
+                # If any activities still lack visual data, assign results from most similar activity
+                activities_with_visual = [idx for idx, activity in enumerate(state.parsed_info["activities"]) 
+                                        if "visual_data" in activity and activity["visual_data"]["detected_objects"]]
+                
+                for idx, activity in enumerate(state.parsed_info["activities"]):
+                    if idx not in activities_with_visual and activities_with_visual:
+                        # Find most similar activity that has visual data
+                        # This is a simple approach - you could use more sophisticated similarity measures
+                        similar_idx = activities_with_visual[0]
+                        activity["visual_data"] = state.parsed_info["activities"][similar_idx]["visual_data"]
+                        print(f"⚠️ Activity {idx+1} ({activity.get('place_name', '')}) lacks visual data, borrowing from activity {similar_idx+1}")
             
             # Add recognition data to the result
             state.parsed_info["recognition_data"] = {
