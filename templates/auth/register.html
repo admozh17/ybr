@@ -1,63 +1,278 @@
 {% extends "base.html" %}
 
-{% block title %}Register - Brick by Brick{% endblock %}
-
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Create an Account</h3>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('register') }}">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                        <div class="form-text">We'll never share your email with anyone else.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="confirm_password" class="form-label">Confirm Password</label>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                    </div>
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Register</button>
-                    </div>
-                </form>
-                
-                <hr>
-                
-                <div class="text-center">
-                    <p>Or sign up with:</p>
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('google_login') }}" class="btn btn-outline-danger">
-                            <i class="bi bi-google me-2"></i>Register with Google
-                        </a>
-                        <a href="{{ url_for('instagram_login') }}" class="btn btn-outline-primary">
-                            <i class="bi bi-instagram me-2"></i>Register with Instagram
-                        </a>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">My Profile</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture }}" alt="Profile Picture" 
+                                     class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;">
+                            {% else %}
+                                <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center text-white mb-3" 
+                                     style="width: 120px; height: 120px; font-size: 3rem;">
+                                    {{ user.username[0].upper() }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h5>{{ user.full_name or user.username }}</h5>
+                            <p class="text-muted">@{{ user.username }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                            <p><strong>Account Type:</strong> {{ user.auth_provider.title() if user.auth_provider else 'Local' }}</p>
+                            <p><strong>Member Since:</strong> {{ user.created_at.strftime('%B %Y') if user.created_at else 'Unknown' }}</p>
+                            {% if user.last_login %}
+                                <p><strong>Last Login:</strong> {{ user.last_login.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                            {% endif %}
+                        </div>
                     </div>
                     
-                    <div class="mt-3">
-                        <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+                    <hr>
+                    
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">
+                            <i class="fas fa-edit me-1"></i>Edit Profile
+                        </a>
+                        <a href="{{ url_for('gallery') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-images me-1"></i>My Gallery
+                        </a>
+                        <a href="{{ url_for('albums_view') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-folder me-1"></i>My Albums
+                        </a>
+                        <a href="/map" class="btn btn-outline-primary">
+                            <i class="fas fa-map-marker-alt me-1"></i>My Map
+                        </a>
                     </div>
                 </div>
-                
-                {% if current_user.is_authenticated and current_user.auth_provider %}
-                <div class="alert alert-info mt-4">
-                    <p>You're using {{ current_user.auth_provider.title() }} authentication. Password management is not available.</p>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Friends Section -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Friends</h6>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addFriendModal">
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
-                {% endif %}
+                <div class="card-body">
+                    <div id="friends-list">
+                        <!-- Friends will be loaded here -->
+                    </div>
+                    
+                    <!-- Friend Requests -->
+                    <div id="friend-requests" style="margin-top: 15px;">
+                        <!-- Friend requests will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistics Card -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">My Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary" id="total-analyses">{{ user.results|length }}</h4>
+                                <small class="text-muted">Analyses</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success" id="total-albums">{{ user.albums|length }}</h4>
+                            <small class="text-muted">Albums</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Add Friend Modal -->
+<div class="modal fade" id="addFriendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Friend</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="friend-username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="friend-username" placeholder="Enter friend's username">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="sendFriendRequest()">Send Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadFriends();
+    loadFriendRequests();
+});
+
+async function loadFriends() {
+    try {
+        const response = await fetch('/api/map/friends');
+        const data = await response.json();
+        
+        const friendsList = document.getElementById('friends-list');
+        
+        if (data.friends && data.friends.length > 0) {
+            friendsList.innerHTML = data.friends.map(friend => `
+                <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                    ${friend.profile_picture ? 
+                        `<img src="${friend.profile_picture}" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">` :
+                        `<div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">${friend.username.charAt(0).toUpperCase()}</div>`
+                    }
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${friend.username}</div>
+                        <small class="text-muted">${friend.place_count} places</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeFriend(${friend.id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+        } else {
+            friendsList.innerHTML = '<p class="text-muted small">No friends yet.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading friends:', error);
+    }
+}
+
+async function loadFriendRequests() {
+    try {
+        const response = await fetch('/api/friends/requests');
+        const data = await response.json();
+        
+        const requestsContainer = document.getElementById('friend-requests');
+        
+        if (data.received && data.received.length > 0) {
+            requestsContainer.innerHTML = `
+                <h6 class="text-primary">Friend Requests</h6>
+                ${data.received.map(request => `
+                    <div class="d-flex align-items-center justify-content-between mb-2 p-2 bg-light rounded">
+                        <div>
+                            <strong>${request.sender.username}</strong>
+                            <br><small class="text-muted">wants to be friends</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-success me-1" onclick="acceptFriendRequest(${request.id})">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="declineFriendRequest(${request.id})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        } else {
+            requestsContainer.innerHTML = '';
+        }
+    } catch (error) {
+        console.error('Error loading friend requests:', error);
+    }
+}
+
+async function sendFriendRequest() {
+    const username = document.getElementById('friend-username').value.trim();
+    if (!username) {
+        alert('Please enter a username');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/friends/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(data.message);
+            bootstrap.Modal.getInstance(document.getElementById('addFriendModal')).hide();
+            document.getElementById('friend-username').value = '';
+            loadFriends();
+        } else {
+            alert(data.error || 'Error adding friend');
+        }
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        alert('Error adding friend: ' + error.message);
+    }
+}
+
+async function acceptFriendRequest(requestId) {
+    try {
+        const response = await fetch(`/api/friends/accept/${requestId}`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Friend request accepted!');
+            loadFriends();
+            loadFriendRequests();
+        } else {
+            alert(data.error || 'Error accepting friend request');
+        }
+    } catch (error) {
+        console.error('Error accepting friend request:', error);
+    }
+}
+
+async function declineFriendRequest(requestId) {
+    try {
+        const response = await fetch(`/api/friends/decline/${requestId}`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Friend request declined');
+            loadFriendRequests();
+        } else {
+            alert(data.error || 'Error declining friend request');
+        }
+    } catch (error) {
+        console.error('Error declining friend request:', error);
+    }
+}
+
+async function removeFriend(friendId) {
+    if (!confirm('Are you sure you want to remove this friend?')) return;
+    
+    try {
+        const response = await fetch(`/api/friends/remove/${friendId}`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Friend removed');
+            loadFriends();
+        } else {
+            alert(data.error || 'Error removing friend');
+        }
+    } catch (error) {
+        console.error('Error removing friend:', error);
+    }
+}
+</script>
 {% endblock %}

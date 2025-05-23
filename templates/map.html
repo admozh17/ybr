@@ -1,0 +1,2200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Places Map - Your Food Discoveries</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .main-container {
+            min-height: 100vh;
+            padding-bottom: 0;
+        }
+        
+        #map {
+            height: 75vh;
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+        
+        .map-container {
+            position: relative;
+            height: 75vh;
+            min-height: 500px;
+        }
+        
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .search-container {
+            position: relative;
+            flex-grow: 1;
+            max-width: 300px;
+        }
+        
+        #search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1001;
+            display: none;
+        }
+        
+        .suggestion-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .scope-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .scope-btn {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .scope-btn:hover {
+            background: #f8f9fa;
+        }
+        
+        .scope-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .place-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        
+        .place-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .place-card.highlighted {
+            border: 3px solid #007bff;
+            box-shadow: 0 4px 16px rgba(0,123,255,0.3);
+        }
+        
+        .place-card.selected {
+            border: 2px solid #28a745;
+            background-color: #f8fff8;
+        }
+        
+        .place-card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+        
+        .place-stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .sidebar {
+            height: 75vh;
+            overflow-y: auto;
+            padding-right: 10px;
+            min-height: 500px;
+        }
+        
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .sidebar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        
+        .place-marker-popup {
+            min-width: 300px;
+        }
+        
+        .place-marker-popup img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .food-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
+        .food-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+        }
+        
+        .visit-badge {
+            background: #28a745;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+        }
+        
+        .rating-stars {
+            color: #ffc107;
+            font-size: 0.9rem;
+        }
+        
+        .selection-info {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-badge {
+            background: #6c757d;
+            color: white;
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            margin: 2px;
+            display: inline-block;
+        }
+        
+        .friend-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+        
+        .friend-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .friend-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .semantic-highlight {
+            color: #ff6b35;
+            font-weight: bold;
+        }
+        
+        .rating-input i {
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #e9ecef;
+            transition: color 0.2s;
+        }
+        
+        .rating-input i:hover {
+            color: #ffc107;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .add-places-section {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .add-places-section:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        
+        .gallery-item {
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .gallery-item:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+
+        .gallery-item.selected {
+            border-color: #28a745;
+            background-color: #f8fff8;
+        }
+        
+        @media (max-width: 768px) {
+            .map-controls {
+                position: static;
+                margin-bottom: 15px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-container {
+                max-width: none;
+                margin-bottom: 10px;
+            }
+            
+            .scope-buttons {
+                justify-content: center;
+            }
+            
+            #map, .map-container {
+                height: 50vh;
+                min-height: 300px;
+            }
+            
+            .sidebar {
+                height: auto;
+                margin-top: 20px;
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-map-marker-alt me-2"></i>Your Food Map
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-home me-1"></i>Home
+                </a>
+                <a class="nav-link" href="/gallery">
+                    <i class="fas fa-images me-1"></i>Gallery
+                </a>
+                <a class="nav-link" href="/albums_view">
+                    <i class="fas fa-photo-video me-1"></i>Albums
+                </a>
+                <a class="nav-link" href="/search">
+                    <i class="fas fa-search me-1"></i>Search
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4 main-container">
+        <div class="row h-100">
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="sidebar">
+                    <!-- Statistics -->
+                    <div class="place-stats">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="total-places">0</span>
+                                    <span class="stat-label">Places</span>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="total-visits">0</span>
+                                    <span class="stat-label">Visits</span>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="cities-count">0</span>
+                                    <span class="stat-label">Cities</span>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="top-genre">-</span>
+                                    <span class="stat-label">Top Type</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Places from Gallery/Albums -->
+                    <div class="add-places-section" onclick="showAddPlacesModal()">
+                        <i class="fas fa-plus-circle fa-2x text-primary mb-2"></i>
+                        <h6>Add Places to Map</h6>
+                        <p class="text-muted mb-0">Import places from your gallery or albums</p>
+                    </div>
+
+                    <!-- Selection Info -->
+                    <div class="selection-info" id="selection-info" style="display: none;">
+                        <h6><i class="fas fa-info-circle me-2"></i>Selection Active</h6>
+                        <p class="mb-2" id="selection-details">Showing selected places</p>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="clearSelection()">
+                                <i class="fas fa-times me-1"></i>Clear Selection
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="exportSelected()">
+                                <i class="fas fa-download me-1"></i>Export
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Active Filters -->
+                    <div id="active-filters" style="margin-bottom: 15px;"></div>
+
+                    <!-- Search and Scope -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-search me-2"></i>Search & Scope
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="search-container mb-3">
+                                <input type="text" class="form-control form-control-sm" 
+                                       id="search-input" placeholder="Search places, food, cuisine...">
+                                <div id="search-suggestions"></div>
+                            </div>
+                            
+                            <div class="scope-buttons mb-3">
+                                <button class="scope-btn active" data-scope="mine">
+                                    <i class="fas fa-user me-1"></i>Mine
+                                </button>
+                                <button class="scope-btn" data-scope="friends">
+                                    <i class="fas fa-users me-1"></i>Friends
+                                </button>
+                                <button class="scope-btn" data-scope="global">
+                                    <i class="fas fa-globe me-1"></i>Global
+                                </button>
+                                <button class="scope-btn" data-scope="nearby">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Nearby
+                                </button>
+                            </div>
+                            
+                            <button class="btn btn-primary btn-sm w-100" id="search-btn">
+                                <i class="fas fa-search me-1"></i>Search
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-filter me-2"></i>Filters
+                                <button class="btn btn-sm btn-outline-secondary float-end" onclick="clearFilters()">
+                                    Clear All
+                                </button>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <!-- Genre Filter -->
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select form-select-sm" id="genre-filter">
+                                    <option value="">All Types</option>
+                                    <option value="restaurant">Restaurant</option>
+                                    <option value="cafe">Cafe</option>
+                                    <option value="bar">Bar</option>
+                                    <option value="fast_food">Fast Food</option>
+                                    <option value="bakery">Bakery</option>
+                                    <option value="food_truck">Food Truck</option>
+                                </select>
+                            </div>
+
+                            <!-- Cuisine Filter -->
+                            <div class="mb-3">
+                                <label class="form-label">Cuisine</label>
+                                <select class="form-select form-select-sm" id="cuisine-filter">
+                                    <option value="">All Cuisines</option>
+                                    <option value="italian">Italian</option>
+                                    <option value="chinese">Chinese</option>
+                                    <option value="japanese">Japanese</option>
+                                    <option value="mexican">Mexican</option>
+                                    <option value="indian">Indian</option>
+                                    <option value="thai">Thai</option>
+                                    <option value="french">French</option>
+                                </select>
+                            </div>
+
+                            <!-- City Filter -->
+                            <div class="mb-3">
+                                <label class="form-label">City</label>
+                                <input type="text" class="form-control form-control-sm" 
+                                       id="city-filter" placeholder="Enter city name">
+                            </div>
+
+                            <!-- Rating Filter -->
+                            <div class="mb-3">
+                                <label class="form-label">Minimum Rating</label>
+                                <select class="form-select form-select-sm" id="rating-filter">
+                                    <option value="">Any Rating</option>
+                                    <option value="1">⭐ 1+ Stars</option>
+                                    <option value="2">⭐⭐ 2+ Stars</option>
+                                    <option value="3">⭐⭐⭐ 3+ Stars</option>
+                                    <option value="4">⭐⭐⭐⭐ 4+ Stars</option>
+                                    <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Places List -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6><i class="fas fa-list me-2"></i>Places (<span id="places-count">0</span>)</h6>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary" onclick="sortPlaces('name')">A-Z</button>
+                                <button class="btn btn-outline-primary" onclick="sortPlaces('date')">Date</button>
+                                <button class="btn btn-outline-primary" onclick="sortPlaces('rating')">Rating</button>
+                            </div>
+                        </div>
+                        <div id="places-list">
+                            <div class="text-center p-4">
+                                <div class="loading-spinner mb-2"></div>
+                                <p class="text-muted mb-0">Loading places...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div class="col-lg-8">
+                <div class="map-container">
+                    <div class="map-controls">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary btn-sm" onclick="refreshMap()">
+                                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="fitMapToBounds()">
+                                    <i class="fas fa-expand-arrows-alt me-1"></i>Fit All
+                                </button>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
+                                            type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-download me-1"></i>Export
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="exportData('json')">JSON</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="exportData('csv')">CSV</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="exportData('kml')">KML (Google Earth)</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <small class="text-muted" id="map-status">
+                                <div class="loading-spinner me-2" style="width: 16px; height: 16px; border-width: 2px;"></div>
+                                Loading your places...
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Add Places Modal with Gallery Selector -->
+    <div class="modal fade" id="addPlacesModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus-circle me-2"></i>Add Places to Map
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- From Gallery Section -->
+                        <div class="col-md-8">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Select from Gallery</h6>
+                                    <div>
+                                        <span id="selected-count" class="badge bg-primary me-2">0 selected</span>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="selectAll()">Select All</button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="clearGallerySelection()">Clear</button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0">
+                                    <!-- Search and Filter -->
+                                    <div class="p-3 border-bottom">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <input type="text" class="form-control form-control-sm" 
+                                                       id="gallery-search" placeholder="Search places...">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <select class="form-select form-select-sm" id="gallery-genre-filter">
+                                                    <option value="">All Types</option>
+                                                    <option value="restaurant">Restaurant</option>
+                                                    <option value="cafe">Cafe</option>
+                                                    <option value="bar">Bar</option>
+                                                    <option value="bakery">Bakery</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <select class="form-select form-select-sm" id="gallery-location-filter">
+                                                    <option value="">All Locations</option>
+                                                    <option value="has_coords">Has Coordinates</option>
+                                                    <option value="no_coords">Missing Coordinates</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Gallery Items Grid -->
+                                    <div id="gallery-items" style="max-height: 400px; overflow-y: auto;">
+                                        <div class="text-center p-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <p class="mt-2 text-muted">Loading gallery items...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer">
+                                    <button class="btn btn-primary" onclick="addSelectedToMap()" disabled id="add-selected-btn">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Add Selected to Map
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- From Albums Section -->
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Import from Albums</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted">Import entire albums to the map</p>
+                                    <select class="form-select mb-3" id="album-selector">
+                                        <option value="">Select an album...</option>
+                                    </select>
+                                    <button class="btn btn-success w-100" onclick="importFromAlbum()">
+                                        <i class="fas fa-photo-video me-2"></i>Import Album
+                                    </button>
+                                    <hr>
+                                    <h6>Quick Actions</h6>
+                                    <button class="btn btn-outline-info w-100 mb-2" onclick="showRecentPlaces()">
+                                        <i class="fas fa-clock me-2"></i>Recent Places (Last 10)
+                                    </button>
+                                    <button class="btn btn-outline-warning w-100" onclick="showUnmappedPlaces()">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Places Missing Coordinates
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Place Details Modal -->
+    <div class="modal fade" id="placeDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        <span id="modal-place-name">Place Details</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-place-content">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="find-similar-btn">
+                        <i class="fas fa-search me-1"></i>Find Similar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="add-review-btn">
+                        <i class="fas fa-star me-1"></i>Add Review
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Review Modal -->
+    <div class="modal fade" id="addReviewModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-star me-2"></i>Add Review
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="review-form">
+                        <input type="hidden" id="review-result-id">
+                        <input type="hidden" id="review-activity-index">
+                        
+                        <!-- Rating -->
+                        <div class="mb-3">
+                            <label class="form-label">Rating *</label>
+                            <div class="rating-input" id="rating-stars">
+                                <i class="fas fa-star" data-rating="1"></i>
+                                <i class="fas fa-star" data-rating="2"></i>
+                                <i class="fas fa-star" data-rating="3"></i>
+                                <i class="fas fa-star" data-rating="4"></i>
+                                <i class="fas fa-star" data-rating="5"></i>
+                            </div>
+                            <input type="hidden" id="rating-value" name="rating" required>
+                        </div>
+
+                        <!-- Review Text -->
+                        <div class="mb-3">
+                            <label class="form-label">Your Review</label>
+                            <textarea class="form-control" id="review-text" name="review_text" 
+                                      rows="3" placeholder="How was your experience?"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitReview()">
+                        <i class="fas fa-save me-1"></i>Add Review
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // ==================== GLOBAL VARIABLES ====================
+    let map;
+    let markers = [];
+    let places = [];
+    let currentFilters = {};
+    let currentPlaceData = null;
+    let currentSearchScope = 'mine';
+    let userLocation = null;
+    let sortField = 'name';
+    let sortDirection = 'asc';
+    let isMapInitialized = false;
+    let galleryItems = [];
+    let selectedGalleryItems = new Set();
+
+    // Get URL parameters with better parsing
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedPlaces = urlParams.get('selected') ? urlParams.get('selected').split(',') : [];
+    const highlightedPlace = urlParams.get('highlight') || null;
+    const albumId = urlParams.get('album') || null;
+
+    // Log URL parameters for debugging
+    console.log('🔗 URL Parameters:', {
+        selected: selectedPlaces,
+        highlighted: highlightedPlace,
+        album: albumId,
+        full_url: window.location.href
+    });
+
+    // ==================== INITIALIZATION ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...');
+        setupEventListeners();
+        loadMapStats();
+        loadAlbums();
+        
+        // Show selection info if applicable
+        if (selectedPlaces.length > 0 || highlightedPlace || albumId) {
+            showSelectionInfo();
+        }
+    });
+
+    // Enhanced Google Maps initialization callback
+    window.initMap = function() {
+        console.log('Google Maps API loaded, initializing map...');
+        
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 4,
+            center: { lat: 39.8283, lng: -98.5795 }, // Center of US
+            styles: [
+                {
+                    featureType: 'poi',
+                    elementType: 'labels',
+                    stylers: [{ visibility: 'off' }]
+                }
+            ]
+        });
+
+        isMapInitialized = true;
+        
+        // ENHANCED: Get user's location with better error handling
+        if (navigator.geolocation) {
+            console.log('🌍 Requesting user location...');
+            
+            const locationOptions = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // 5 minutes
+            };
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    console.log('✅ User location obtained:', userLocation);
+                    
+                    // Update UI to show location is available
+                    const nearbyBtn = document.querySelector('[data-scope="nearby"]');
+                    if (nearbyBtn) {
+                        nearbyBtn.innerHTML = '<i class="fas fa-map-marker-alt me-1"></i>Nearby ✓';
+                        nearbyBtn.style.color = '#28a745';
+                    }
+                    
+                    // If we're on a nearby search and have location now, reload
+                    if (currentSearchScope === 'nearby') {
+                        console.log('🔄 Reloading nearby search with location');
+                        performSearch();
+                    }
+                },
+                function(error) {
+                    console.error('❌ Geolocation error:', error);
+                    let errorMsg = 'Location unavailable';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = 'Location permission denied';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = 'Location unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = 'Location timeout';
+                            break;
+                    }
+                    
+                    // Update UI to show location error
+                    const nearbyBtn = document.querySelector('[data-scope="nearby"]');
+                    if (nearbyBtn) {
+                        nearbyBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Nearby ✗';
+                        nearbyBtn.style.color = '#dc3545';
+                        nearbyBtn.title = errorMsg;
+                    }
+                    
+                    console.log('🌍 Location error:', errorMsg);
+                },
+                locationOptions
+            );
+        } else {
+            console.log('❌ Geolocation not supported');
+            const nearbyBtn = document.querySelector('[data-scope="nearby"]');
+            if (nearbyBtn) {
+                nearbyBtn.innerHTML = '<i class="fas fa-times me-1"></i>Nearby ✗';
+                nearbyBtn.style.color = '#dc3545';
+                nearbyBtn.title = 'Geolocation not supported';
+            }
+        }
+
+        // FIXED: Load places after map is ready and handle URL parameters
+        setTimeout(() => {
+            if (highlightedPlace || selectedPlaces.length > 0 || albumId) {
+                console.log('🎯 Loading places with URL parameters:', {
+                    highlighted: highlightedPlace,
+                    selected: selectedPlaces,
+                    album: albumId
+                });
+                loadPlaces();
+            } else {
+                console.log('📍 Loading default places');
+                loadPlaces();
+            }
+        }, 500); // Small delay to ensure everything is ready
+    };
+
+    // ==================== EVENT LISTENERS ====================
+    function setupEventListeners() {
+        console.log('Setting up event listeners...');
+        
+        // ENHANCED: Search scope buttons with location checking
+        document.querySelectorAll('.scope-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const newScope = this.dataset.scope;
+                console.log('🔄 Scope button clicked:', newScope);
+                
+                // FIXED: Check location for nearby search
+                if (newScope === 'nearby' && !userLocation) {
+                    alert('Nearby search requires your location. Please:\n1. Enable location permissions\n2. Refresh the page\n3. Try again');
+                    
+                    // Try to get location again
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                userLocation = {
+                                    lat: position.coords.latitude,
+                                    lng: position.coords.longitude
+                                };
+                                console.log('✅ Location obtained after retry:', userLocation);
+                                
+                                // Update button and proceed
+                                btn.innerHTML = '<i class="fas fa-map-marker-alt me-1"></i>Nearby ✓';
+                                btn.style.color = '#28a745';
+                                
+                                // Activate scope and search
+                                document.querySelectorAll('.scope-btn').forEach(b => b.classList.remove('active'));
+                                btn.classList.add('active');
+                                currentSearchScope = newScope;
+                                
+                                updateMapStatus('Loading places for ' + currentSearchScope + ' scope...');
+                                performSearch();
+                            },
+                            function(error) {
+                                console.error('❌ Location retry failed:', error);
+                                btn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Nearby ✗';
+                                btn.style.color = '#dc3545';
+                            }
+                        );
+                    }
+                    return;
+                }
+                
+                document.querySelectorAll('.scope-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentSearchScope = newScope;
+                
+                updateMapStatus('Loading places for ' + currentSearchScope + ' scope...');
+                performSearch();
+            });
+        });
+
+        // Search functionality
+        document.getElementById('search-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            performSearch();
+        });
+        
+        document.getElementById('search-input').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // Search suggestions
+        setupSearchSuggestions();
+
+        // Filter changes
+        document.getElementById('genre-filter').addEventListener('change', performSearch);
+        document.getElementById('cuisine-filter').addEventListener('change', performSearch);
+        document.getElementById('city-filter').addEventListener('input', debounce(performSearch, 500));
+        document.getElementById('rating-filter').addEventListener('change', performSearch);
+
+        // Review rating stars
+        setupRatingInput();
+    }
+
+    // ==================== SEARCH FUNCTIONALITY ====================
+    async function performSearch() {
+        console.log('🔍 Performing enhanced search with scope:', currentSearchScope);
+        
+        const query = document.getElementById('search-input').value.trim();
+        const genre = document.getElementById('genre-filter').value;
+        const cuisine = document.getElementById('cuisine-filter').value;
+        const city = document.getElementById('city-filter').value.trim();
+        const rating = document.getElementById('rating-filter').value;
+        
+        // Check if nearby search has location
+        if (currentSearchScope === 'nearby' && !userLocation) {
+            updateMapStatus('❌ Location required for nearby search. Please enable location permissions.');
+            alert('Nearby search requires your location. Please:\n1. Enable location permissions for this site\n2. Refresh the page\n3. Try nearby search again');
+            return;
+        }
+        
+        // Build search parameters
+        const params = new URLSearchParams({
+            scope: currentSearchScope,
+            ...(query && { q: query }),
+            ...(genre && { genre }),
+            ...(cuisine && { cuisine }),
+            ...(city && { city }),
+            ...(rating && { min_rating: rating })
+        });
+
+        // Add location for nearby search
+        if (currentSearchScope === 'nearby' && userLocation) {
+            params.append('lat', userLocation.lat.toString());
+            params.append('lng', userLocation.lng.toString());
+            params.append('radius', '25'); // 25km default
+            console.log('📍 Adding location to nearby search:', userLocation);
+        }
+
+        // Add selection parameters if applicable
+        if (selectedPlaces.length > 0) {
+            params.append('selected', selectedPlaces.join(','));
+        }
+        if (albumId) {
+            params.append('album', albumId);
+        }
+        if (highlightedPlace) {
+            params.append('highlight', highlightedPlace);
+        }
+
+        try {
+            updateMapStatus('Searching...');
+            
+            // Use the enhanced search endpoint
+            const response = await fetch(`/api/map/search?${params}`);
+            const data = await response.json();
+            
+            console.log('🔍 Enhanced search response:', data);
+            
+            if (data.error) {
+                console.error('❌ Search error:', data.error);
+                updateMapStatus('Search error: ' + data.error);
+                
+                if (data.error.includes('Location required') || data.error.includes('nearby')) {
+                    alert('Nearby search needs your location. Please enable location permissions and try again.');
+                }
+                return;
+            }
+            
+            places = data.results || [];
+            updateMap();
+            updatePlacesList();
+            updateActiveFilters(data.filters || {});
+            
+            const resultText = `Found ${places.length} places`;
+            if (query) {
+                updateMapStatus(`${resultText} matching "${query}"`);
+            } else {
+                updateMapStatus(resultText);
+            }
+            
+        } catch (error) {
+            console.error('❌ Search error:', error);
+            updateMapStatus('Search failed: ' + error.message);
+        }
+    }
+        // ==================== DATA LOADING ====================
+    async function loadPlaces() {
+        console.log('📍 Loading places with params:', {
+            scope: currentSearchScope,
+            selected: selectedPlaces,
+            highlighted: highlightedPlace,
+            album: albumId
+        });
+        
+        try {
+            const params = new URLSearchParams({
+                scope: currentSearchScope,
+                ...currentFilters
+            });
+
+            // FIXED: Add selection parameters properly
+            if (selectedPlaces.length > 0) {
+                params.append('selected', selectedPlaces.join(','));
+                console.log('✅ Adding selected places:', selectedPlaces);
+            }
+            if (albumId) {
+                params.append('album', albumId);
+                console.log('✅ Adding album filter:', albumId);
+            }
+            if (highlightedPlace) {
+                params.append('highlight', highlightedPlace);
+                console.log('✅ Adding highlight:', highlightedPlace);
+            }
+            
+            updateMapStatus('Loading places...');
+            
+            // Use the improved endpoint that handles coordinates better
+            const response = await fetch(`/api/map/places?${params}`);
+            const data = await response.json();
+            
+            console.log('📍 Places response:', data);
+            
+            if (data.places) {
+                places = data.places;
+                updateMap();
+                updatePlacesList();
+                updateActiveFilters(data.filters_applied || {});
+                updateMapStatus(`Showing ${places.length} places`);
+                
+                // Update stats to show actual places vs visits
+                document.getElementById('total-places').textContent = places.length;
+                
+                // FIXED: Handle highlighting specific place
+                if (highlightedPlace && places.length > 0) {
+                    const highlightedPlaceData = places.find(p => 
+                        p.id === highlightedPlace || 
+                        `${p.result_id}-${p.activity_index}` === highlightedPlace
+                    );
+                    
+                    if (highlightedPlaceData) {
+                        console.log('🎯 Found highlighted place:', highlightedPlaceData);
+                        
+                        // Center map on highlighted place after a short delay
+                        setTimeout(() => {
+                            if (highlightedPlaceData.latitude && highlightedPlaceData.longitude) {
+                                const center = new google.maps.LatLng(
+                                    parseFloat(highlightedPlaceData.latitude), 
+                                    parseFloat(highlightedPlaceData.longitude)
+                                );
+                                map.setCenter(center);
+                                map.setZoom(15);
+                                
+                                // Find and click the marker to show info window
+                                const marker = markers.find(m => 
+                                    m.getTitle() === highlightedPlaceData.name
+                                );
+                                if (marker) {
+                                    google.maps.event.trigger(marker, 'click');
+                                }
+                            }
+                        }, 1000);
+                    }
+                }
+            } else {
+                console.error('❌ Error loading places:', data.error);
+                updateMapStatus('Error loading places: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('❌ Error loading places:', error);
+            updateMapStatus('Error loading places: ' + error.message);
+        }
+    }
+
+        async function loadMapStats() {
+            try {
+                const response = await fetch('/api/map/stats');
+                const data = await response.json();
+                
+                console.log('Map stats:', data);
+                
+                if (data) {
+                    document.getElementById('total-places').textContent = data.total_places || 0;
+                    document.getElementById('total-visits').textContent = data.total_visits || 0;
+                    document.getElementById('cities-count').textContent = data.cities_visited || 0;
+                    
+                    const topGenres = Object.keys(data.top_genres || {});
+                    document.getElementById('top-genre').textContent = topGenres[0] || '-';
+                }
+            } catch (error) {
+                console.error('Error loading map stats:', error);
+            }
+        }
+
+        async function loadAlbums() {
+            try {
+                console.log('Loading albums...');
+                const response = await fetch('/albums');
+                const data = await response.json();
+                
+                console.log('Albums loaded:', data);
+                
+                // Store albums globally for other functions
+                window.availableAlbums = data || [];
+                
+                return data;
+            } catch (error) {
+                console.error('Error loading albums:', error);
+                window.availableAlbums = [];
+                return [];
+            }
+        }
+
+        async function loadAlbumsForModal() {
+            try {
+                console.log('Loading albums for modal...');
+                const response = await fetch('/albums');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Albums API response:', data);
+                
+                const albumSelector = document.getElementById('album-selector');
+                if (!albumSelector) {
+                    console.error('Album selector element not found');
+                    return;
+                }
+                
+                // Clear existing options
+                albumSelector.innerHTML = '<option value="">Select an album...</option>';
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    data.forEach(album => {
+                        const option = document.createElement('option');
+                        option.value = album.id;
+                        const activityCount = album.activities ? album.activities.length : 0;
+                        const albumType = album.is_public ? ' (Public)' : ' (Private)';
+                        option.textContent = `${album.name}${albumType} (${activityCount} places)`;
+                        albumSelector.appendChild(option);
+                    });
+                    console.log(`Successfully loaded ${data.length} albums into selector`);
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = data.length === 0 ? 'No albums available' : 'Error loading albums';
+                    option.disabled = true;
+                    albumSelector.appendChild(option);
+                    console.log('No albums found or error in data');
+                }
+            } catch (error) {
+                console.error('Error loading albums for modal:', error);
+                const albumSelector = document.getElementById('album-selector');
+                if (albumSelector) {
+                    albumSelector.innerHTML = '<option value="" disabled>Error loading albums</option>';
+                }
+            }
+        }
+
+        // ==================== UI UPDATE FUNCTIONS ====================
+        function updateMapStatus(message) {
+            const statusElement = document.getElementById('map-status');
+            if (message.includes('Loading') || message.includes('Searching')) {
+                statusElement.innerHTML = `
+                    <div class="loading-spinner me-2" style="width: 16px; height: 16px; border-width: 2px;"></div>
+                    ${message}
+                `;
+            } else {
+                statusElement.innerHTML = message;
+            }
+        }
+
+        function showSelectionInfo() {
+            const selectionInfo = document.getElementById('selection-info');
+            const selectionDetails = document.getElementById('selection-details');
+            
+            let message = '';
+            if (albumId) {
+                message = `Showing places from album`;
+            } else if (selectedPlaces.length > 0) {
+                message = `Showing ${selectedPlaces.length} selected place(s) from gallery`;
+            } else if (highlightedPlace) {
+                message = `Highlighting specific place`;
+            }
+            
+            selectionDetails.textContent = message;
+            selectionInfo.style.display = 'block';
+        }
+
+        function updateActiveFilters(appliedFilters) {
+            const container = document.getElementById('active-filters');
+            const badges = [];
+            
+            if (appliedFilters.genre) {
+                badges.push(`<span class="filter-badge">Type: ${appliedFilters.genre}</span>`);
+            }
+            if (appliedFilters.cuisine) {
+                badges.push(`<span class="filter-badge">Cuisine: ${appliedFilters.cuisine}</span>`);
+            }
+            if (appliedFilters.city) {
+                badges.push(`<span class="filter-badge">City: ${appliedFilters.city}</span>`);
+            }
+            if (appliedFilters.min_rating) {
+                badges.push(`<span class="filter-badge">Rating: ${appliedFilters.min_rating}+ stars</span>`);
+            }
+            if (appliedFilters.selected_count > 0) {
+                badges.push(`<span class="filter-badge">Selected: ${appliedFilters.selected_count} places</span>`);
+            }
+            
+            container.innerHTML = badges.join('');
+            container.style.display = badges.length > 0 ? 'block' : 'none';
+        }
+
+        function updateMap() {
+            if (!isMapInitialized) {
+                console.log('Map not initialized yet, skipping update');
+                return;
+            }
+
+            console.log('Updating map with', places.length, 'places');
+            
+            // Clear existing markers
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            if (places.length === 0) {
+                console.log('No places to show on map');
+                return;
+            }
+
+            // Add new markers
+            const bounds = new google.maps.LatLngBounds();
+            let validMarkers = 0;
+            
+            places.forEach((place, index) => {
+                if (place.latitude && place.longitude) {
+                    const isHighlighted = place.is_highlighted || 
+                        (highlightedPlace && place.id === highlightedPlace);
+                    const isSelected = place.is_selected || selectedPlaces.includes(place.id);
+                    
+                    const marker = new google.maps.Marker({
+                        position: { lat: parseFloat(place.latitude), lng: parseFloat(place.longitude) },
+                        map: map,
+                        title: place.name,
+                        icon: getMarkerIcon(place, isHighlighted, isSelected)
+                    });
+
+                    // Create info window
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: createMarkerPopup(place)
+                    });
+
+                    marker.addListener('click', () => {
+                        // Close other info windows
+                        markers.forEach(m => {
+                            if (m.infoWindow) m.infoWindow.close();
+                        });
+                        
+                        infoWindow.open(map, marker);
+                        marker.infoWindow = infoWindow;
+                    });
+
+                    markers.push(marker);
+                    bounds.extend(marker.getPosition());
+                    validMarkers++;
+                } else {
+                    console.warn('Place missing coordinates:', place.name);
+                }
+            });
+
+            console.log('Added', validMarkers, 'valid markers to map');
+
+            // Fit map to show all markers
+            if (validMarkers > 0) {
+                map.fitBounds(bounds);
+                if (validMarkers === 1) {
+                    // Give it a moment for bounds to be applied, then set zoom
+                    setTimeout(() => map.setZoom(15), 100);
+                }
+            }
+        }
+
+        function getMarkerIcon(place, isHighlighted, isSelected) {
+            let color = '#4285f4'; // Default blue
+            
+            if (isHighlighted) {
+                color = '#ff4444'; // Red for highlighted
+            } else if (isSelected) {
+                color = '#44ff44'; // Green for selected
+            } else if (place.scope === 'friends') {
+                color = '#ff6b6b'; // Red for friends' places
+            } else if (place.rating > 4 || place.average_rating > 4) {
+                color = '#0f9d58'; // Green for highly rated
+            } else if (place.total_visits > 1) {
+                color = '#ff9800'; // Orange for multiple visits
+            }
+            
+            const size = isHighlighted ? 40 : isSelected ? 36 : 32;
+            
+            return {
+                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="${color}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                `)}`,
+                scaledSize: new google.maps.Size(size, size),
+                anchor: new google.maps.Point(size/2, size)
+            };
+        }
+
+       function createMarkerPopup(place) {
+            const foodItems = place.visual_data?.food_items || [];
+            const foodTags = foodItems.slice(0, 3).map(item => 
+                `<span class="food-tag">${item.name}</span>`
+            ).join(' ');
+
+            const userInfo = place.user ? 
+                `<div class="small text-muted mb-2">
+                    <i class="fas fa-user me-1"></i>Shared by ${place.user.username}
+                 </div>` : '';
+
+            const rating = place.rating || place.average_rating || 0;
+            const ratingDisplay = rating > 0 ? 
+                `<div class="rating-stars mb-1">${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))} (${place.review_count || 0} reviews)</div>` : '';
+
+            // ENHANCED: Better address display
+            const addressDisplay = place.full_address || place.street_address || 
+                                  `${place.city || 'Unknown city'}${place.state ? ', ' + place.state : ''}`;
+
+            return `
+                <div class="place-marker-popup">
+                    ${place.image_url ? `<img src="${place.image_url}" alt="${place.name}">` : ''}
+                    <h6 class="mb-1">${place.name}</h6>
+                    <p class="mb-1 text-muted">${place.genre || 'Restaurant'} ${place.cuisine ? `• ${place.cuisine}` : ''}</p>
+                    ${userInfo}
+                    ${ratingDisplay}
+                    
+                    <!-- ENHANCED: Address display -->
+                    <p class="mb-1"><small>📍 ${addressDisplay}</small></p>
+                    
+                    ${foodTags ? `<div class="food-items mb-2">${foodTags}</div>` : ''}
+                    ${place.distance_km ? `<div class="small text-muted mb-2">📏 ${place.distance_km.toFixed(1)} km away</div>` : ''}
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span class="visit-badge">📅 ${new Date(place.visit_date).toLocaleDateString()}</span>
+                        <button class="btn btn-sm btn-primary" onclick="showPlaceDetails('${place.result_id}', ${place.activity_index})">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+// Add search tips helper
+function showSearchTips() {
+    const tips = `
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <h6><i class="fas fa-lightbulb me-2"></i>Search Tips</h6>
+        <ul class="mb-0">
+            <li><strong>Place names:</strong> "Joe's Pizza", "Central Park"</li>
+            <li><strong>Addresses:</strong> "123 Main St", "Brooklyn, NY"</li>
+            <li><strong>Food items:</strong> "ramen", "tacos", "ice cream"</li>
+            <li><strong>Cuisine types:</strong> "italian", "mexican", "thai"</li>
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>`;
+    
+    // Insert tips above the search container
+    const searchCard = document.querySelector('.card:has(#search-input)');
+    if (searchCard) {
+        searchCard.insertAdjacentHTML('beforebegin', tips);
+    }
+}
+
+// Optional: Add search tips when user focuses on search
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        let tipsShown = false;
+        searchInput.addEventListener('focus', function() {
+            if (!tipsShown) {
+                // Uncomment the next line if you want to show tips automatically
+                // showSearchTips();
+                tipsShown = true;
+            }
+        });
+    }
+});
+
+
+        function updatePlacesList() {
+    const placesList = document.getElementById('places-list');
+    document.getElementById('places-count').textContent = places.length;
+
+    if (places.length === 0) {
+        placesList.innerHTML = '<p class="text-muted text-center">No places found. Try adjusting your search or filters.</p>';
+        return;
+    }
+
+    // Sort places
+    const sortedPlaces = [...places].sort((a, b) => {
+        let aVal, bVal;
+        
+        switch (sortField) {
+            case 'name':
+                aVal = a.name.toLowerCase();
+                bVal = b.name.toLowerCase();
+                break;
+            case 'date':
+                aVal = new Date(a.visit_date);
+                bVal = new Date(b.visit_date);
+                break;
+            case 'rating':
+                aVal = a.average_rating || a.rating || 0;
+                bVal = b.average_rating || b.rating || 0;
+                break;
+            default:
+                aVal = a.name.toLowerCase();
+                bVal = b.name.toLowerCase();
+        }
+        
+        if (sortDirection === 'asc') {
+            return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        } else {
+            return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        }
+    });
+
+    placesList.innerHTML = sortedPlaces.map(place => {
+        const foodItems = place.visual_data?.food_items || [];
+        const foodTags = foodItems.slice(0, 2).map(item => 
+            `<span class="food-tag">${item.name}</span>`
+        ).join(' ');
+
+        const userBadge = place.user ? 
+            `<div class="small text-muted">👤 ${place.user.username}</div>` : '';
+
+        const cardClass = place.is_highlighted ? 'place-card highlighted' : 'place-card';
+
+        const rating = place.average_rating || place.rating || 0;
+        const stars = rating > 0 ? 
+            `<div class="rating-stars small">${'★'.repeat(Math.floor(rating))} ${rating.toFixed(1)}</div>` : '';
+
+        // ENHANCED: Show address information
+        const addressInfo = place.full_address || place.street_address || 
+                           `${place.city || ''}${place.city && place.state ? ', ' + place.state : ''}`;
+
+        return `
+            <div class="${cardClass}" onclick="showPlaceDetails('${place.result_id}', ${place.activity_index})">
+                ${place.image_url ? `<img src="${place.image_url}" alt="${place.name}">` : ''}
+                <div class="p-3">
+                    <h6 class="mb-1">${place.name}</h6>
+                    <p class="text-muted mb-1 small">${place.genre || 'Restaurant'}${place.cuisine ? ` • ${place.cuisine}` : ''}</p>
+                    ${userBadge}
+                    ${stars}
+                    ${foodTags ? `<div class="food-items mb-2">${foodTags}</div>` : ''}
+                    
+                    <!-- ENHANCED: Address display -->
+                    ${addressInfo ? `<div class="small text-muted mb-2">📍 ${addressInfo}</div>` : ''}
+                    
+                    ${place.distance_km ? `<div class="small text-success mb-2">📏 ${place.distance_km.toFixed(1)} km away</div>` : ''}
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">${new Date(place.visit_date).toLocaleDateString()}</small>
+                        <span class="visit-badge">View Details</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadSearchSuggestions(query) {
+    if (query.length < 2) {
+        hideSuggestions();
+        return;
+    }
+    
+    try {
+        console.log('🔍 Loading address-aware suggestions for:', query);
+        
+        // Try address suggestions first
+        const addressResponse = await fetch(`/api/map/address-suggestions?q=${encodeURIComponent(query)}&scope=${currentSearchScope}`);
+        
+        let suggestions = [];
+        
+        if (addressResponse.ok) {
+            const addressData = await addressResponse.json();
+            suggestions = addressData.suggestions || [];
+        }
+        
+        // If we don't have enough address suggestions, try semantic suggestions
+        if (suggestions.length < 5) {
+            try {
+                const semanticResponse = await fetch(`/api/map/semantic-suggestions?q=${encodeURIComponent(query)}&scope=${currentSearchScope}`);
+                if (semanticResponse.ok) {
+                    const semanticData = await semanticResponse.json();
+                    const semanticSuggestions = semanticData.suggestions || [];
+                    
+                    // Combine and deduplicate
+                    const combined = [...suggestions, ...semanticSuggestions];
+                    suggestions = [...new Set(combined)];
+                }
+            } catch (semanticError) {
+                console.log('Semantic suggestions failed, using address suggestions only');
+            }
+        }
+        
+        const suggestionsDiv = document.getElementById('search-suggestions');
+        
+        if (suggestions.length > 0) {
+            const suggestionsHtml = suggestions.slice(0, 8).map(suggestion => {
+                // Determine suggestion type
+                const isAddress = suggestion.includes(',') || /\d/.test(suggestion);
+                const icon = isAddress ? '📍' : '🔍';
+                
+                return `<div class="suggestion-item" onclick="selectSuggestion('${escapeHtml(suggestion)}')">
+                    <span class="me-2">${icon}</span>${escapeHtml(suggestion)}
+                </div>`;
+            }).join('');
+            
+            suggestionsDiv.innerHTML = suggestionsHtml;
+            suggestionsDiv.style.display = 'block';
+            
+            console.log('✅ Loaded', suggestions.length, 'enhanced suggestions');
+        } else {
+            hideSuggestions();
+        }
+    } catch (error) {
+        console.error('❌ Error loading suggestions:', error);
+        hideSuggestions();
+    }
+}
+
+        // ==================== PLACE DETAILS & REVIEWS ====================
+        async function showPlaceDetails(resultId, activityIndex) {
+            console.log('Showing place details for:', resultId, activityIndex);
+            
+            try {
+                const response = await fetch(`/api/map/place/${resultId}/${activityIndex}`);
+                const data = await response.json();
+                
+                if (data.place) {
+                    currentPlaceData = {
+                        result_id: resultId,
+                        activity_index: activityIndex
+                    };
+                    
+                    populatePlaceDetailsModal(data);
+                    const modal = new bootstrap.Modal(document.getElementById('placeDetailsModal'));
+                    modal.show();
+                } else {
+                    alert('Error loading place details: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error loading place details:', error);
+                alert('Error loading place details: ' + error.message);
+            }
+        }
+
+        function populatePlaceDetailsModal(data) {
+            const place = data.place;
+            const currentVisit = data.current_visit;
+            const otherVisits = data.other_visits || [];
+            
+            document.getElementById('modal-place-name').textContent = place.name;
+            
+            document.getElementById('add-review-btn').onclick = () => openAddReview();
+            document.getElementById('find-similar-btn').onclick = () => findSimilarPlaces(currentVisit.result_id, currentVisit.activity_index);
+            
+            const userReviews = place.user_reviews || [];
+            
+            const content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        ${place.photo_url ? `<img src="${place.photo_url}" class="img-fluid rounded mb-3" alt="${place.name}">` : ''}
+                        
+                        <h6>Location</h6>
+                        <p>${place.availability?.street_address || 'Address not available'}<br>
+                           ${place.availability?.city ? place.availability.city + ', ' : ''}${place.availability?.state || ''} ${place.availability?.country || ''}</p>
+                        
+                        <h6>Details</h6>
+                        <p><strong>Type:</strong> ${place.genre || 'Restaurant'}<br>
+                           ${place.cuisine ? `<strong>Cuisine:</strong> ${place.cuisine}<br>` : ''}
+                           <strong>Total Visits:</strong> ${place.total_visits}<br>
+                           ${place.overall_rating > 0 ? `<strong>Rating:</strong> ${place.overall_rating.toFixed(1)}/5 (${place.review_count} reviews)<br>` : ''}
+                           ${place.vibes ? `<strong>Vibes:</strong> ${place.vibes}<br>` : ''}</p>
+                           
+                        ${place.all_food_items && place.all_food_items.length > 0 ? `
+                            <h6>Food Items Discovered</h6>
+                            <div class="food-items">
+                                ${place.all_food_items.map(item => `<span class="food-tag" title="${item.description || ''}">${item.name}</span>`).join(' ')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="col-md-6">
+                        ${userReviews.length > 0 ? `
+                            <h6>Reviews</h6>
+                            <div class="mb-3" style="max-height: 300px; overflow-y: auto;">
+                                ${userReviews.map(review => `
+                                    <div class="border-bottom pb-2 mb-2">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="rating-stars">${'★'.repeat(Math.floor(review.rating))}${'☆'.repeat(5-Math.floor(review.rating))}</span>
+                                            <small class="text-muted">${new Date(review.created_at).toLocaleDateString()}</small>
+                                        </div>
+                                        ${review.username ? `<div class="small fw-bold text-primary">${review.username}</div>` : ''}
+                                        ${review.review_text ? `<p class="small mb-1">${review.review_text}</p>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <h6>Visit History</h6>
+                        <div class="small" style="max-height: 200px; overflow-y: auto;">
+                            <div class="border-bottom py-2">
+                                <strong>Current Visit</strong><br>
+                                <a href="${currentVisit.source_url}" target="_blank" class="text-decoration-none">
+                                    📹 ${new Date(currentVisit.visit_date).toLocaleDateString()}
+                                </a>
+                            </div>
+                            ${otherVisits.slice(0, 5).map(visit => `
+                                <div class="border-bottom py-1">
+                                    <a href="${visit.source_url}" target="_blank" class="text-decoration-none">
+                                        📹 ${new Date(visit.visit_date).toLocaleDateString()}
+                                    </a>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        ${otherVisits.length > 5 ? `<small class="text-muted">And ${otherVisits.length - 5} more visits...</small>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-place-content').innerHTML = content;
+        }
+
+        function openAddReview() {
+            if (!currentPlaceData) return;
+            
+            document.getElementById('review-result-id').value = currentPlaceData.result_id;
+            document.getElementById('review-activity-index').value = currentPlaceData.activity_index;
+            document.getElementById('review-form').reset();
+            
+            // Reset star rating display
+            document.querySelectorAll('#rating-stars i').forEach(star => {
+                star.style.color = '#e9ecef';
+            });
+            
+            const modal = new bootstrap.Modal(document.getElementById('addReviewModal'));
+            modal.show();
+        }
+
+        async function submitReview() {
+            const reviewData = {
+                result_id: document.getElementById('review-result-id').value,
+                activity_index: parseInt(document.getElementById('review-activity-index').value),
+                rating: parseFloat(document.getElementById('rating-value').value),
+                review_text: document.getElementById('review-text').value
+            };
+            
+            if (!reviewData.rating) {
+                alert('Please provide a rating');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/map/add_review', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(reviewData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Review added successfully!');
+                    bootstrap.Modal.getInstance(document.getElementById('addReviewModal')).hide();
+                    showPlaceDetails(reviewData.result_id, reviewData.activity_index);
+                    // Refresh places to update ratings
+                    loadPlaces();
+                } else {
+                    alert('Error adding review: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error adding review: ' + error.message);
+            }
+        }
+
+        // ==================== ADD PLACES FUNCTIONALITY ====================
+        async function showAddPlacesModal() {
+            const modal = new bootstrap.Modal(document.getElementById('addPlacesModal'));
+            modal.show();
+            
+            // Load both gallery items and albums when modal opens
+            await Promise.all([
+                loadGalleryItems(),
+                loadAlbumsForModal()
+            ]);
+        }
+
+        async function loadGalleryItems() {
+            try {
+                const response = await fetch('/api/gallery/select');
+                const data = await response.json();
+                
+                if (data.items) {
+                    galleryItems = data.items;
+                    displayGalleryItems(galleryItems);
+                    setupGalleryFilters();
+                } else {
+                    document.getElementById('gallery-items').innerHTML = 
+                        '<div class="text-center p-4"><p class="text-danger">Error loading gallery items</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading gallery items:', error);
+                document.getElementById('gallery-items').innerHTML = 
+                    '<div class="text-center p-4"><p class="text-danger">Error loading gallery items</p></div>';
+            }
+        }
+
+        function displayGalleryItems(items) {
+            const container = document.getElementById('gallery-items');
+            
+            if (items.length === 0) {
+                container.innerHTML = '<div class="text-center p-4"><p class="text-muted">No gallery items found</p></div>';
+                return;
+            }
+            
+            const itemsHtml = items.map(item => `
+                <div class="gallery-item p-2 m-2 border rounded position-relative ${selectedGalleryItems.has(item.id) ? 'selected' : ''}" 
+                     onclick="toggleGallerySelection('${item.id}')" data-item-id="${item.id}">
+                    <div class="row">
+                        <div class="col-3">
+                            ${item.image_url ? 
+                                `<img src="${item.image_url}" alt="${item.place_name}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px;">` :
+                                `<div class="bg-light d-flex align-items-center justify-content-center" style="height: 80px; border-radius: 4px;">
+                                    <i class="fas fa-utensils text-muted"></i>
+                                </div>`
+                            }
+                        </div>
+                        <div class="col-9">
+                            <h6 class="mb-1">${item.place_name}</h6>
+                            <p class="text-muted mb-1 small">${item.genre}${item.cuisine ? ` • ${item.cuisine}` : ''}</p>
+                            <p class="text-muted mb-1 small">${item.city || 'Location not specified'}</p>
+                            ${item.food_items.length > 0 ? 
+                                `<div class="small">${item.food_items.map(food => `<span class="badge bg-light text-dark me-1">${food}</span>`).join('')}</div>` : 
+                                ''
+                            }
+                        </div>
+                    </div>
+                    <span class="badge position-absolute location-badge ${item.has_location ? 'bg-success' : 'bg-danger'}" style="top: 5px; right: 5px; font-size: 0.7rem;">
+                        ${item.has_location ? '📍' : '❌'}
+                    </span>
+                </div>
+            `).join('');
+            
+            container.innerHTML = `<div class="p-2">${itemsHtml}</div>`;
+        }
+
+        function setupGalleryFilters() {
+            // Search filter
+            document.getElementById('gallery-search').addEventListener('input', filterGalleryItems);
+            
+            // Genre filter
+            document.getElementById('gallery-genre-filter').addEventListener('change', filterGalleryItems);
+            
+            // Location filter
+            document.getElementById('gallery-location-filter').addEventListener('change', filterGalleryItems);
+        }
+
+        function filterGalleryItems() {
+            const searchTerm = document.getElementById('gallery-search').value.toLowerCase();
+            const genreFilter = document.getElementById('gallery-genre-filter').value;
+            const locationFilter = document.getElementById('gallery-location-filter').value;
+            
+            let filteredItems = galleryItems.filter(item => {
+                // Search filter
+                const matchesSearch = !searchTerm || 
+                    item.place_name.toLowerCase().includes(searchTerm) ||
+                    item.cuisine.toLowerCase().includes(searchTerm) ||
+                    item.city.toLowerCase().includes(searchTerm) ||
+                    item.food_items.some(food => food.toLowerCase().includes(searchTerm));
+                
+                // Genre filter
+                const matchesGenre = !genreFilter || item.genre === genreFilter;
+                
+                // Location filter
+                const matchesLocation = !locationFilter || 
+                    (locationFilter === 'has_coords' && item.has_location) ||
+                    (locationFilter === 'no_coords' && !item.has_location);
+                
+                return matchesSearch && matchesGenre && matchesLocation;
+            });
+            
+            displayGalleryItems(filteredItems);
+        }
+
+        function toggleGallerySelection(itemId) {
+            if (selectedGalleryItems.has(itemId)) {
+                selectedGalleryItems.delete(itemId);
+            } else {
+                selectedGalleryItems.add(itemId);
+            }
+            
+            // Update visual selection
+            const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+            if (itemElement) {
+                itemElement.classList.toggle('selected');
+            }
+            
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            const count = selectedGalleryItems.size;
+            document.getElementById('selected-count').textContent = `${count} selected`;
+            document.getElementById('add-selected-btn').disabled = count === 0;
+        }
+
+        function selectAll() {
+            const visibleItems = document.querySelectorAll('.gallery-item:not([style*="display: none"])');
+            visibleItems.forEach(item => {
+                const itemId = item.dataset.itemId;
+                selectedGalleryItems.add(itemId);
+                item.classList.add('selected');
+            });
+            updateSelectionCount();
+        }
+
+        function clearGallerySelection() {
+            selectedGalleryItems.clear();
+            document.querySelectorAll('.gallery-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            updateSelectionCount();
+        }
+
+        async function addSelectedToMap() {
+            if (selectedGalleryItems.size === 0) {
+                alert('Please select at least one place');
+                return;
+            }
+            
+            console.log('Adding selected items to map:', Array.from(selectedGalleryItems));
+            
+            try {
+                // Close the modal first
+                bootstrap.Modal.getInstance(document.getElementById('addPlacesModal')).hide();
+                
+                // Update the current page instead of redirecting
+                updateMapStatus('Loading selected places...');
+                
+                // Make API call to get full place data with coordinates
+                const params = new URLSearchParams({
+                    selected: Array.from(selectedGalleryItems).join(','),
+                    scope: currentSearchScope
+                });
+                
+                const response = await fetch(`/api/map/places?${params}`);
+                const data = await response.json();
+                
+                if (data.places) {
+                    // Replace current places with selected ones
+                    places = data.places;
+                    updateMap();
+                    updatePlacesList();
+                    updateMapStatus(`Showing ${places.length} selected places`);
+                    
+                    // Clear selection for next time
+                    selectedGalleryItems.clear();
+                    
+                    // Show selection info
+                    const selectionInfo = document.getElementById('selection-info');
+                    const selectionDetails = document.getElementById('selection-details');
+                    selectionDetails.textContent = `Showing ${places.length} selected places from gallery`;
+                    selectionInfo.style.display = 'block';
+                    
+                    console.log('Successfully added selected places to map');
+                } else {
+                    throw new Error(data.error || 'Failed to load selected places');
+                }
+                
+            } catch (error) {
+                console.error('Error adding places to map:', error);
+                updateMapStatus('Error adding places to map: ' + error.message);
+                alert('Error adding places to map: ' + error.message);
+            }
+        }
+
+        function showRecentPlaces() {
+            const recentItems = galleryItems
+                .sort((a, b) => new Date(b.visit_date) - new Date(a.visit_date))
+                .slice(0, 10);
+            
+            // Select recent items
+            selectedGalleryItems.clear();
+            recentItems.forEach(item => selectedGalleryItems.add(item.id));
+            
+            displayGalleryItems(galleryItems);
+            updateSelectionCount();
+        }
+
+        function showUnmappedPlaces() {
+            const unmappedItems = galleryItems.filter(item => !item.has_location);
+            
+            if (unmappedItems.length === 0) {
+                alert('All your places have coordinates! 🎉');
+                return;
+            }
+            
+            // Filter to show only unmapped places
+            document.getElementById('gallery-location-filter').value = 'no_coords';
+            filterGalleryItems();
+            
+            alert(`Found ${unmappedItems.length} places missing coordinates. Consider adding addresses to these places.`);
+        }
+
+        function importFromAlbum() {
+            const albumId = document.getElementById('album-selector').value;
+            if (!albumId) {
+                alert('Please select an album');
+                return;
+            }
+            
+            // Close the modal
+            bootstrap.Modal.getInstance(document.getElementById('addPlacesModal')).hide();
+            
+            // Redirect to map with album filter
+            window.location.href = `/map?album=${albumId}`;
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        async function findSimilarPlaces(resultId, activityIndex) {
+            try {
+                updateMapStatus('Finding similar places...');
+                
+                const response = await fetch(`/api/map/similar-places/${resultId}/${activityIndex}`);
+                const data = await response.json();
+                
+                if (data.similar_places && data.similar_places.length > 0) {
+                    places = data.similar_places.map(place => ({
+                        id: `${place.result_id}_${place.activity_index}`,
+                        result_id: place.result_id,
+                        activity_index: place.activity_index,
+                        name: place.place_name,
+                        genre: place.genre,
+                        cuisine: place.cuisine,
+                        city: place.city,
+                        latitude: place.latitude,
+                        longitude: place.longitude,
+                        image_url: place.image_url,
+                        similarity_score: place.similarity_score,
+                        total_visits: 1,
+                        average_rating: 0,
+                        visit_date: new Date().toISOString()
+                    }));
+                    
+                    updateMap();
+                    updatePlacesList();
+                    
+                    updateMapStatus(`Found ${data.similar_places.length} similar places`);
+                    bootstrap.Modal.getInstance(document.getElementById('placeDetailsModal')).hide();
+                } else {
+                    alert('No similar places found');
+                    updateMapStatus('No similar places found');
+                }
+            } catch (error) {
+                console.error('Error finding similar places:', error);
+                alert('Error finding similar places: ' + error.message);
+                updateMapStatus('Error finding similar places');
+            }
+        }
+
+        function clearSelection() {
+            // Remove URL parameters and reload
+            const url = new URL(window.location);
+            url.searchParams.delete('selected');
+            url.searchParams.delete('highlight');
+            url.searchParams.delete('album');
+            url.searchParams.delete('filter');
+            
+            window.location.href = url.toString();
+        }
+
+        function clearFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('genre-filter').value = '';
+            document.getElementById('cuisine-filter').value = '';
+            document.getElementById('city-filter').value = '';
+            document.getElementById('rating-filter').value = '';
+            
+            currentFilters = {};
+            loadPlaces();
+        }
+
+        function sortPlaces(field) {
+            if (sortField === field) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortDirection = 'asc';
+            }
+            
+            updatePlacesList();
+        }
+
+        function refreshMap() {
+            updateMapStatus('Refreshing...');
+            loadPlaces();
+            loadMapStats();
+        }
+
+        function fitMapToBounds() {
+            if (markers.length > 0 && isMapInitialized) {
+                const bounds = new google.maps.LatLngBounds();
+                markers.forEach(marker => bounds.extend(marker.getPosition()));
+                map.fitBounds(bounds);
+            }
+        }
+
+        function exportData(format) {
+            const currentParams = new URLSearchParams({
+                scope: currentSearchScope,
+                ...currentFilters
+            });
+            
+            if (currentSearchScope === 'nearby' && userLocation) {
+                currentParams.append('lat', userLocation.lat);
+                currentParams.append('lng', userLocation.lng);
+                currentParams.append('radius', 25);
+            }
+            
+            const searchQuery = document.getElementById('search-input').value.trim();
+            if (searchQuery) {
+                currentParams.append('q', searchQuery);
+            }
+            
+            window.open(`/api/map/export/${format}?${currentParams}`);
+        }
+
+        function exportSelected() {
+            if (selectedPlaces.length === 0) {
+                alert('No places selected for export');
+                return;
+            }
+            
+            const selectedData = places.filter(place => selectedPlaces.includes(place.id));
+            const dataStr = JSON.stringify(selectedData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'selected_places.json';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        // Utility function for debouncing
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Handle window resize to maintain map size
+        window.addEventListener('resize', function() {
+            if (isMapInitialized && map) {
+                google.maps.event.trigger(map, 'resize');
+            }
+        });
+
+
+    // ==================== DEBUGGING HELPERS ====================
+        function debugLocationStatus() {
+        console.log('🌍 Location Debug:', {
+            userLocation: userLocation,
+            geolocationSupported: !!navigator.geolocation,
+            currentScope: currentSearchScope,
+            permissions: navigator.permissions ? 'supported' : 'not supported'
+        });
+        
+        // Check permission status if available
+        if (navigator.permissions) {
+            navigator.permissions.query({name: 'geolocation'}).then(function(result) {
+                console.log('📍 Geolocation permission:', result.state);
+            });
+        }
+    }
+    </script>
+
+    <!-- Google Maps API -->
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY or config.GOOGLE_API_KEY }}&callback=initMap"
+        onerror="handleMapsError()">
+    </script>
+    
+    <script>
+        function handleMapsError() {
+            console.error('Failed to load Google Maps API');
+            document.getElementById('map-status').innerHTML = 'Failed to load Google Maps API - check your API key configuration';
+        }
+    </script>
+</body>
+</html>

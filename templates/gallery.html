@@ -47,46 +47,77 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for result in results %}
-                {% for activity in result.data.get('activities', []) %}
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden relative group">
-                        <input type="checkbox" class="absolute top-2 right-2 w-5 h-5 hidden selection-checkbox" 
-                               onchange="toggleSelection(this, '{{ result.id }}', '{{ loop.index0 }}')"
-                               data-result-id="{{ result.id }}" 
-                               data-activity-index="{{ loop.index0 }}">
-                        <div class="cursor-pointer" onclick="window.location.href='/details/{{ result.id }}/{{ loop.index0 }}'">
-                        <img src="{{ activity.get('image_url', 'https://via.placeholder.com/400x300') }}" 
-                             alt="{{ activity.get('place_name', 'Place') }}"
-                             class="w-full h-48 object-cover">
-                        <div class="p-4">
-                            <h3 class="text-xl font-semibold" 
-                                data-location="{{ activity.get('availability', {}).get('city', '') or activity.get('availability', {}).get('region', '') or activity.get('availability', {}).get('country', '') }}">
-                                {{ activity.get('place_name', 'Unknown') }}
-                            </h3>
-                            <p class="text-gray-600" data-genre="{{ activity.get('genre', 'Unknown genre') }}">
-                                {{ activity.get('genre', 'Unknown genre') }}
-                            </p>
-                            {% if activity.get('cuisine') %}
-                                <p>Cuisine: {{ activity.cuisine }}</p>
-                            {% endif %}
-                            {% if activity.get('vibes') %}
-                                <p>Vibes: {{ activity.vibes }}</p>
-                            {% endif %}
-                            <div class="mt-4 flex justify-between items-center">
-                                <p class="text-sm text-gray-500">
-                                    {{ result.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
-                                </p>
-                                <a href="{{ result.url }}"
-                                    target="_blank" rel="noopener noreferrer"
-                                    class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-                                    onclick="event.stopPropagation();">
-                                    View Original Reel
-                                </a>
+                    {% for activity in result.data.get('activities', []) %}
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden relative group">
+                            <input type="checkbox" class="absolute top-2 right-2 w-5 h-5 hidden selection-checkbox" 
+                                   onchange="toggleSelection(this, '{{ result.id }}', '{{ loop.index0 }}')"
+                                   data-result-id="{{ result.id }}" 
+                                   data-activity-index="{{ loop.index0 }}">
+                            
+                            <div class="cursor-pointer" onclick="window.location.href='/details/{{ result.id }}/{{ loop.index0 }}'">
+                                <img src="{{ activity.get('image_url', 'https://via.placeholder.com/400x300') }}" 
+                                     alt="{{ activity.get('place_name', 'Place') }}"
+                                     class="w-full h-48 object-cover">
+                                
+                                <div class="p-4">
+                                    <h3 class="text-xl font-semibold" 
+                                        data-location="{{ activity.get('availability', {}).get('city', '') or activity.get('availability', {}).get('region', '') or activity.get('availability', {}).get('country', '') }}">
+                                        {{ activity.get('place_name', 'Unknown') }}
+                                    </h3>
+                                    
+                                    <p class="text-gray-600" data-genre="{{ activity.get('genre', 'Unknown genre') }}">
+                                        {{ activity.get('genre', 'Unknown genre') }}
+                                    </p>
+                                    
+                                    {% if activity.get('cuisine') %}
+                                        <p>Cuisine: {{ activity.cuisine }}</p>
+                                    {% endif %}
+                                    
+                                    {% if activity.get('vibes') %}
+                                        <p>Vibes: {{ activity.vibes }}</p>
+                                    {% endif %}
+                                    
+                                    <!-- Enhanced Address Display -->
+                                    {% set availability = activity.get('availability', {}) %}
+                                    {% if availability.get('street_address') %}
+                                        <p class="text-sm text-gray-500 mt-2">
+                                            📍 {{ availability.street_address }}
+                                            {% if availability.get('city') %}, {{ availability.city }}{% endif %}
+                                        </p>
+                                    {% elif availability.get('city') %}
+                                        <p class="text-sm text-gray-500 mt-2">
+                                            📍 {{ availability.city }}
+                                            {% if availability.get('state') %}, {{ availability.state }}{% endif %}
+                                        </p>
+                                    {% endif %}
+                                    
+                                    <div class="mt-4 flex justify-between items-center">
+                                        <p class="text-sm text-gray-500">
+                                            {{ result.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        </p>
+                                        
+                                        <div class="flex gap-2">
+                                            <!-- Enhanced Map Button -->
+                                            <button onclick="event.stopPropagation(); showLocationOptions('{{ result.id }}', {{ loop.index0 }}, '{{ activity.get('place_name', 'Unknown') }}')"
+                                                    class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
+                                                    title="View on Map">
+                                                🗺️ Map
+                                            </button>
+                                            
+                                            <!-- Original Reel Link -->
+                                            <a href="{{ result.url }}"
+                                               target="_blank" rel="noopener noreferrer"
+                                               class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                                               onclick="event.stopPropagation();">
+                                                📹 Original
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    </div>
+                    {% endfor %}
                 {% endfor %}
-            {% endfor %}
         </div>
     </div>
 
@@ -491,5 +522,94 @@
             }
         });
     </script>
+        function showOnExternalMap(resultId, activityIndex) {
+                fetch(`/result/${resultId}/activity/${activityIndex}`)
+                    .then(response => response.json())
+                    .then(activity => {
+                        const availability = activity.availability || {};
+                        let mapQuery = '';
+                        
+                        if (availability.street_address) {
+                            mapQuery = availability.street_address;
+                            const locationParts = [];
+                            if (availability.city) locationParts.push(availability.city);
+                            if (availability.state) locationParts.push(availability.state);
+                            if (availability.country) locationParts.push(availability.country);
+                            
+                            if (locationParts.length > 0) {
+                                mapQuery += ', ' + locationParts.join(', ');
+                            }
+                        } else if (availability.city) {
+                            const locationParts = [activity.place_name || 'Restaurant'];
+                            if (availability.city) locationParts.push(availability.city);
+                            if (availability.state) locationParts.push(availability.state);
+                            if (availability.country) locationParts.push(availability.country);
+                            mapQuery = locationParts.join(', ');
+                        } else {
+                            mapQuery = activity.place_name || 'Restaurant';
+                        }
+                        
+                        console.log('Opening Google Maps with query:', mapQuery);
+                        
+                        if (availability.lat && availability.lon) {
+                            const lat = parseFloat(availability.lat);
+                            const lng = parseFloat(availability.lon);
+                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${encodeURIComponent(mapQuery)}`;
+                            window.open(mapsUrl, '_blank');
+                        } else {
+                            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
+                            window.open(mapsUrl, '_blank');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching activity data:', error);
+                        alert('Error loading location data. Please try again.');
+                    });
+            }
+
+            function showOnInternalMap(resultId, activityIndex) {
+                const highlightId = `${resultId}-${activityIndex}`;
+                window.open(`/map?highlight=${highlightId}`, '_blank');
+            }
+
+            function showLocationOptions(resultId, activityIndex, placeName) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <h3 class="text-lg font-semibold mb-4">View "${placeName}" on Map</h3>
+                        <div class="space-y-3">
+                            <button onclick="showOnExternalMap('${resultId}', ${activityIndex}); document.body.removeChild(this.closest('.fixed'))" 
+                                    class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                📍 Open in Google Maps (with full address)
+                            </button>
+                            <button onclick="showOnInternalMap('${resultId}', ${activityIndex}); document.body.removeChild(this.closest('.fixed'))" 
+                                    class="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                🗺️ View on Your Food Map
+                            </button>
+                            <button onclick="document.body.removeChild(this.closest('.fixed'))" 
+                                    class="w-full bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        document.body.removeChild(modal);
+                    }
+                });
+            }
+
+            // Close modal when clicking outside
+            document.getElementById('jsonModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideModal();
+                }
+            });
+        </script>
 </body>
 </html>

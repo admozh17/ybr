@@ -28,6 +28,14 @@
                  alt="{{ activity.get('place_name', 'Place') }}"
                  class="w-full h-96 object-cover">
 
+            <div class="p-4 text-right">
+                <!-- FIXED: Changed from 'map.map_view' to 'map_view' -->
+                <a href="{{ url_for('map_view', highlight=result_id|string + '-' + activity_index|string) }}"
+                   class="inline-block bg-blue-600 text-white px-4 py-2 rounded shadow">
+                  📍 View this place on Map
+                </a>
+            </div>
+
             <div class="p-8">
                 <h1 class="text-3xl font-bold mb-6">{{ activity.get('place_name', 'Unknown') }}</h1>
 
@@ -159,6 +167,44 @@
                     {% endif %}
                 </div>
                 {% endif %}
+
+                <!-- Add Friends & Reviews Section if user is authenticated -->
+                {% if current_user.is_authenticated %}
+                <div class="mt-8 border-t pt-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Your Experience</h2>
+                        <div class="space-x-2">
+                            <button onclick="openReviewModal()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                                <i class="fas fa-star"></i> Add Review
+                            </button>
+                            <button onclick="addToAlbum()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                <i class="fas fa-plus"></i> Add to Album
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Show existing reviews for this place -->
+                    {% if activity.get('user_reviews') %}
+                    <div class="space-y-3">
+                        <h3 class="font-medium">Previous Reviews:</h3>
+                        {% for review in activity.user_reviews %}
+                        <div class="bg-gray-50 p-3 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-yellow-400">
+                                    {% for i in range(review.rating|int) %}★{% endfor %}
+                                    {% for i in range(5 - review.rating|int) %}☆{% endfor %}
+                                </div>
+                                <small class="text-gray-500">{{ review.created_at[:10] }}</small>
+                            </div>
+                            {% if review.review_text %}
+                                <p class="text-gray-700">{{ review.review_text }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -173,6 +219,51 @@
             </div>
         </div>
     </div>
+
+    <!-- Review Modal (only show if user is authenticated) -->
+    {% if current_user.is_authenticated %}
+    <div id="reviewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Add Review for {{ activity.get('place_name', 'this place') }}</h3>
+                <button onclick="closeReviewModal()" class="text-gray-500 hover:text-gray-700">
+                    <span class="text-xl">&times;</span>
+                </button>
+            </div>
+            
+            <form id="reviewForm" onsubmit="submitReview(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Rating</label>
+                    <div class="flex space-x-1" id="starRating">
+                        <span class="text-gray-300 cursor-pointer text-2xl" data-rating="1">★</span>
+                        <span class="text-gray-300 cursor-pointer text-2xl" data-rating="2">★</span>
+                        <span class="text-gray-300 cursor-pointer text-2xl" data-rating="3">★</span>
+                        <span class="text-gray-300 cursor-pointer text-2xl" data-rating="4">★</span>
+                        <span class="text-gray-300 cursor-pointer text-2xl" data-rating="5">★</span>
+                    </div>
+                    <input type="hidden" id="ratingValue" name="rating" value="0">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="reviewText" class="block text-sm font-medium mb-2">Review</label>
+                    <textarea id="reviewText" name="review_text" rows="3" 
+                              class="w-full border rounded px-3 py-2" 
+                              placeholder="Share your experience..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeReviewModal()" 
+                            class="px-4 py-2 text-gray-600 border rounded hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        Submit Review
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -218,7 +309,99 @@
                 .catch(error => {
                     similarContainer.innerHTML = `<div class="col-span-full p-4 bg-red-100 text-red-700 rounded">Error loading similar content: ${error.message}</div>`;
                 });
+
+            {% if current_user.is_authenticated %}
+            // Set up star rating functionality
+            setupStarRating();
+            {% endif %}
         });
+
+        {% if current_user.is_authenticated %}
+        function setupStarRating() {
+            const stars = document.querySelectorAll('#starRating span');
+            const ratingValue = document.getElementById('ratingValue');
+            
+            stars.forEach((star, index) => {
+                star.addEventListener('click', function() {
+                    const rating = parseInt(this.dataset.rating);
+                    ratingValue.value = rating;
+                    
+                    // Update star display
+                    stars.forEach((s, i) => {
+                        if (i < rating) {
+                            s.classList.remove('text-gray-300');
+                            s.classList.add('text-yellow-400');
+                        } else {
+                            s.classList.remove('text-yellow-400');
+                            s.classList.add('text-gray-300');
+                        }
+                    });
+                });
+            });
+        }
+
+        function openReviewModal() {
+            document.getElementById('reviewModal').classList.remove('hidden');
+            document.getElementById('reviewModal').classList.add('flex');
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModal').classList.add('hidden');
+            document.getElementById('reviewModal').classList.remove('flex');
+            // Reset form
+            document.getElementById('reviewForm').reset();
+            document.getElementById('ratingValue').value = '0';
+            document.querySelectorAll('#starRating span').forEach(star => {
+                star.classList.remove('text-yellow-400');
+                star.classList.add('text-gray-300');
+            });
+        }
+
+        async function submitReview(event) {
+            event.preventDefault();
+            
+            const rating = document.getElementById('ratingValue').value;
+            const reviewText = document.getElementById('reviewText').value;
+            
+            if (!rating || rating === '0') {
+                alert('Please select a rating');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/map/add_review', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        result_id: '{{ result_id }}',
+                        activity_index: {{ activity_index }},
+                        rating: parseFloat(rating),
+                        review_text: reviewText
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Review added successfully!');
+                    closeReviewModal();
+                    location.reload(); // Refresh to show the new review
+                } else {
+                    alert('Error adding review: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error adding review: ' + error.message);
+            }
+        }
+
+        function addToAlbum() {
+            // This could open a modal to select an album or create a new one
+            // For now, just redirect to gallery with selection
+            window.location.href = `/gallery?select={{ result_id }}-{{ activity_index }}`;
+        }
+        {% endif %}
     </script>
 </body>
 </html>
