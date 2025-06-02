@@ -12,7 +12,7 @@ pydantic==1.10.7
 
 # DB migrations & WSGI
 flask-migrate==3.1.0
-uwsgi==2.0.20
+gunicorn==20.1.0
 
 # Async helpers
 aiohttp==3.8.1
@@ -20,11 +20,10 @@ asyncio==3.4.3
 
 ###############################################################################
 # Vision / Speech / ML
-opencv-python==4.7.0.72            # GUI builds
-opencv-python-headless==4.7.0.72   # server builds
-numpy==1.24.2
+opencv-python-headless==4.7.0.72   # server builds only
+numpy==1.23.5
 torch==2.0.0
-torchvision==0.12.0
+torchvision==0.15.0
 pillow==9.1.0
 pytesseract==0.3.10
 whisperx==2.3.0
@@ -68,12 +67,6 @@ python-decouple==3.6
 ###############################################################################
 # Optional food-specific
 transformers==4.18.0
-
-###############################################################################
-# Prod process managers
-gunicorn==20.1.0
-redis==4.2.2
-celery==5.2.6
 
 ###############################################################################
 # Dev / QA
