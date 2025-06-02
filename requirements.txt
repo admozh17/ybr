@@ -51,6 +51,7 @@ uvicorn==0.17.6
 # Vector DB & semantic search
 qdrant-client==1.1.1
 sentence-transformers==2.2.2
+qdrant-server==1.7.0  # Added for local Qdrant server
 
 ###############################################################################
 # Video handling
