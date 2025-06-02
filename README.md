@@ -10,12 +10,10 @@ Get back structured JSON with the place name, location, and genre.
 pip install -r requirements.txt
 
 # Set required environment variables
-export OPENAI_API_KEY=sk-...
+# Create a .env file with these variables:
+OPENAI_API_KEY=sk-...
 # optional geocoding
-export GOOGLE_API_KEY=AIza...
-
-# Start the local Qdrant server (required for vector search)
-python start_qdrant.py
+GOOGLE_API_KEY=AIza...
 
 # Run as CLI tool
 python agent.py --url "https://www.instagram.com/reel/C3J.../" --out result.json
@@ -40,7 +38,7 @@ python web_app.py
 ├─ agent.py          # orchestrator
 ├─ extractor.py      # download, ASR, OCR, geocode
 ├─ llm_parser.py     # prompt & schema
-├─ start_qdrant.py   # local vector database server
+├─ vector_manager.py # vector database management
 ├─ requirements.txt
 └─ README.md
 ```
@@ -51,12 +49,14 @@ python web_app.py
 * Use PaddleOCR for multilingual overlays.  
 * Add vision‑only landmarks via Google Vision or CLIP.  
 
-## Running without Docker
+## Deployment
 
-This project now runs without Docker dependencies. Instead of using Docker for the Qdrant vector database, we use a local installation:
+This project is designed to be deployed on Vercel. To deploy:
 
-1. The `qdrant-server` package is included in `requirements.txt`
-2. Use `start_qdrant.py` to run the vector database locally
-3. The database files are stored in the `qdrant_data` directory
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Add these environment variables in Vercel:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `GOOGLE_API_KEY`: Your Google Maps API key (optional)
 
-This makes the project more portable and easier to deploy on platforms like Vercel.
+The application uses ChromaDB for vector storage, which is a lightweight, in-memory vector database that works well with serverless deployments. The database is automatically persisted to disk in the `chroma_db` directory.
