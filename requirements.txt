@@ -16,14 +16,20 @@ gunicorn==20.1.0
 # PostgreSQL support
 psycopg2-binary==2.9.7
 
-# Basic async
+# Async helpers
 aiohttp==3.8.4
 
-# Vision / ML (simplified)
+# Vision / Speech / ML
 opencv-python-headless==4.7.0.72
 numpy==1.24.2
 pillow==9.5.0
 pytesseract==0.3.10
+
+# WhisperX - use correct version
+whisperx==3.1.1
+
+# Basic ML (skip heavy dependencies for now)
+pydub==0.25.1
 tqdm==4.65.0
 
 # API clients
@@ -33,13 +39,14 @@ googlemaps==4.10.0
 # Video handling
 yt-dlp==2023.7.6
 
-# Basic utilities
+# Utilities
 pandas==1.5.3
+scikit-learn==1.0.2
 
-# TEMPORARY: Skip these heavy ML dependencies for initial deployment
-# torch==2.0.0+cpu
-# torchvision==0.15.0+cpu
-# whisperx
-# transformers==4.30.0
-# sentence-transformers==2.2.2
-# qdrant-client==1.1.1
+# Skip these for initial deployment to get app running:
+# torch
+# torchvision
+# transformers
+# sentence-transformers
+# qdrant-client
+# clip
