@@ -1,0 +1,12 @@
+{
+    "$schema": "https://railway.app/railway.schema.json",
+    "build": {
+      "builder": "nixpacks",
+      "buildCommand": "apt-get update && apt-get install -y ffmpeg tesseract-ocr && pip install --upgrade pip && pip install -r requirements.txt"
+    },
+    "deploy": {
+      "startCommand": "python -c 'import os; os.makedirs(\"cache\", exist_ok=True); os.makedirs(\"instance\", exist_ok=True)' && gunicorn web_app:app --timeout 300 --workers 2 --bind 0.0.0.0:$PORT",
+      "restartPolicyType": "on-failure",
+      "restartPolicyMaxRetries": 3
+    }
+  }

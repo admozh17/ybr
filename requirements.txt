@@ -12,40 +12,45 @@ pydantic==1.10.7
 
 # DB migrations & WSGI
 flask-migrate==3.1.0
-uwsgi==2.0.20
+gunicorn==20.1.0  # CRITICAL for Railway
+
+# PostgreSQL support for Railway
+psycopg2-binary==2.9.7
 
 # Async helpers
-aiohttp==3.8.1
-asyncio==3.4.3
+aiohttp==3.8.4
+nest-asyncio==1.5.6
 
 ###############################################################################
-# Vision / Speech / ML
-opencv-python==4.7.0.72            # GUI builds
-opencv-python-headless==4.7.0.72   # server builds
+# Vision / Speech / ML (CPU versions for Railway)
+opencv-python-headless==4.7.0.72   # Use headless for server
 numpy==1.24.2
-torch==2.0.0
-torchvision==0.12.0
-pillow==9.1.0
+
+# PyTorch CPU versions for Railway (much smaller)
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch==2.0.0+cpu
+torchvision==0.15.0+cpu
+
+pillow==9.5.0
 pytesseract==0.3.10
-whisperx==2.3.0
+
+# WhisperX - install from git
+git+https://github.com/m-bain/whisperX.git@v3.1.1
+
 pydub==0.25.1
 tqdm==4.65.0
 
 # CLIP for frame gating
-clip==0.2.0
+# Note: transformers includes clip functionality
+transformers==4.30.0
 ftfy==6.1.1
-regex==2022.3.15
+regex==2023.6.3
 
 ###############################################################################
 # API clients
-openai==1.0.0
+openai==1.3.0
 anthropic==0.3.11
 googlemaps==4.10.0
-
-###############################################################################
-# Micro-services
-fastapi==0.78.0
-uvicorn==0.17.6
 
 ###############################################################################
 # Vector DB & semantic search
@@ -54,30 +59,15 @@ sentence-transformers==2.2.2
 
 ###############################################################################
 # Video handling
-yt-dlp==2023.3.4
+yt-dlp==2023.7.6
 ffmpeg-python==0.2.0
 
 ###############################################################################
 # Utilities / misc.
 pandas==1.5.3
-timm==0.5.4
 scikit-learn==1.0.2
-concurrent-log-handler==0.9.20
-python-decouple==3.6
 
 ###############################################################################
-# Optional food-specific
-transformers==4.18.0
-
-###############################################################################
-# Prod process managers
-gunicorn==20.1.0
-redis==4.2.2
-celery==5.2.6
-
-###############################################################################
-# Dev / QA
-black==22.3.0
-pylint==2.13.5
-pytest==7.1.1
-pytest-cov==3.0.0
+# Production dependencies
+redis==4.5.5
+celery==5.2.7
