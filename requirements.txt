@@ -1,4 +1,3 @@
-###############################################################################
 # Core Web & Auth
 flask==2.2.3
 flask-sqlalchemy==3.0.3
@@ -12,62 +11,35 @@ pydantic==1.10.7
 
 # DB migrations & WSGI
 flask-migrate==3.1.0
-gunicorn==20.1.0  # CRITICAL for Railway
+gunicorn==20.1.0
 
-# PostgreSQL support for Railway
+# PostgreSQL support
 psycopg2-binary==2.9.7
 
-# Async helpers
+# Basic async
 aiohttp==3.8.4
-nest-asyncio==1.5.6
 
-###############################################################################
-# Vision / Speech / ML (CPU versions for Railway)
-opencv-python-headless==4.7.0.72   # Use headless for server
+# Vision / ML (simplified)
+opencv-python-headless==4.7.0.72
 numpy==1.24.2
-
-# PyTorch CPU versions for Railway (much smaller)
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.0.0+cpu
-torchvision==0.15.0+cpu
-
 pillow==9.5.0
 pytesseract==0.3.10
-
-# WhisperX - install from git
-git+https://github.com/m-bain/whisperX.git@v3.1.1
-
-pydub==0.25.1
 tqdm==4.65.0
 
-# CLIP for frame gating
-# Note: transformers includes clip functionality
-transformers==4.30.0
-ftfy==6.1.1
-regex==2023.6.3
-
-###############################################################################
 # API clients
 openai==1.3.0
-anthropic==0.3.11
 googlemaps==4.10.0
 
-###############################################################################
-# Vector DB & semantic search
-qdrant-client==1.1.1
-sentence-transformers==2.2.2
-
-###############################################################################
 # Video handling
 yt-dlp==2023.7.6
-ffmpeg-python==0.2.0
 
-###############################################################################
-# Utilities / misc.
+# Basic utilities
 pandas==1.5.3
-scikit-learn==1.0.2
 
-###############################################################################
-# Production dependencies
-redis==4.5.5
-celery==5.2.7
+# TEMPORARY: Skip these heavy ML dependencies for initial deployment
+# torch==2.0.0+cpu
+# torchvision==0.15.0+cpu
+# whisperx
+# transformers==4.30.0
+# sentence-transformers==2.2.2
+# qdrant-client==1.1.1
